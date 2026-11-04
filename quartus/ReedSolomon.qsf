@@ -1,0 +1,140 @@
+# =============================================================================
+# Quartus Prime settings - Reed-Solomon tren Terasic DE10-Lite
+# Duong dan file tuong doi so voi thu muc quartus/
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Device & project
+# -----------------------------------------------------------------------------
+set_global_assignment -name FAMILY "MAX 10"
+set_global_assignment -name DEVICE 10M50DAF484C7G
+set_global_assignment -name TOP_LEVEL_ENTITY top_de10_lite
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 25.1
+set_global_assignment -name LAST_QUARTUS_VERSION 25.1
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 484
+set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 7
+
+# Thu muc chua file output (.sof, .pof, report) -> quartus/output_files/
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+
+# Chuan I/O mac dinh cho cac chan chua gan rieng
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+
+# -----------------------------------------------------------------------------
+# Cau hinh MAX 10 (Flash noi - CFM)
+# -----------------------------------------------------------------------------
+set_global_assignment -name ENABLE_OCT_DONE OFF
+set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
+set_global_assignment -name EXTERNAL_FLASH_FALLBACK_ADDRESS 00000000
+set_global_assignment -name INTERNAL_FLASH_UPDATE_MODE "SINGLE IMAGE WITH ERAM"
+set_global_assignment -name CRC_ERROR_OPEN_DRAIN OFF
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_WEAK_PULLUP "AS INPUT TRI-STATED"
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_NEAR_END_VMEAS "HALF VCCIO" -fall
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -rise
+set_global_assignment -name OUTPUT_IO_TIMING_FAR_END_VMEAS "HALF SIGNAL SWING" -fall
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+
+# -----------------------------------------------------------------------------
+# Source files
+# -----------------------------------------------------------------------------
+# Thu muc tim file `include (rs_params.vh)
+set_global_assignment -name SEARCH_PATH ../rtl/include
+
+# Board / giao tiep ngoai vi
+set_global_assignment -name VERILOG_FILE ../rtl/board/top_de10_lite.v
+set_global_assignment -name VERILOG_FILE ../rtl/board/reset_sync.v
+set_global_assignment -name VERILOG_FILE ../rtl/board/input_control.v
+set_global_assignment -name VERILOG_FILE ../rtl/board/display_control.v
+set_global_assignment -name VERILOG_FILE ../rtl/board/hex_decoder.v
+
+# Dieu khien & bo dem
+set_global_assignment -name VERILOG_FILE ../rtl/controller/rs_controller.v
+set_global_assignment -name VERILOG_FILE ../rtl/memory/data_buffer.v
+
+# Phep toan GF(256)
+set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf256_add.v
+set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf256_mul.v
+set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf256_inv.v
+
+# Encoder
+set_global_assignment -name VERILOG_FILE ../rtl/rs_encoder/rs_encoder.v
+
+# Decoder
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/rs_decoder.v
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/syndrome.v
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/berlekamp_massey.v
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/error_evaluator.v
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/chien_search.v
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/forney.v
+set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/error_corrector.v
+
+# Demo / kiem chung tren board
+set_global_assignment -name VERILOG_FILE ../rtl/demo/error_injector.v
+set_global_assignment -name VERILOG_FILE ../rtl/demo/cycle_counter.v
+set_global_assignment -name VERILOG_FILE ../rtl/demo/result_checker.v
+
+# Timing constraints
+set_global_assignment -name SDC_FILE timing.sdc
+
+# -----------------------------------------------------------------------------
+# Pin assignments (theo README_RS_DE10_Lite.md muc 5 & 7)
+# -----------------------------------------------------------------------------
+# Clock 50 MHz
+set_location_assignment PIN_P11 -to MAX10_CLK1_50
+
+# Keys (tich cuc thap: nhan = 0)
+set_location_assignment PIN_B8 -to KEY[0]
+set_location_assignment PIN_A7 -to KEY[1]
+
+# Switches
+set_location_assignment PIN_C10 -to SW[0]
+set_location_assignment PIN_C11 -to SW[1]
+set_location_assignment PIN_D12 -to SW[2]
+set_location_assignment PIN_C12 -to SW[3]
+set_location_assignment PIN_A12 -to SW[4]
+set_location_assignment PIN_B12 -to SW[5]
+set_location_assignment PIN_A13 -to SW[6]
+set_location_assignment PIN_A14 -to SW[7]
+set_location_assignment PIN_B14 -to SW[8]
+set_location_assignment PIN_F15 -to SW[9]
+
+# Status LEDs
+set_location_assignment PIN_A8  -to LEDR[0]
+set_location_assignment PIN_A9  -to LEDR[1]
+set_location_assignment PIN_A10 -to LEDR[2]
+
+# HEX0 (tich cuc thap)
+set_location_assignment PIN_C14 -to HEX0[0]
+set_location_assignment PIN_E15 -to HEX0[1]
+set_location_assignment PIN_C15 -to HEX0[2]
+set_location_assignment PIN_C16 -to HEX0[3]
+set_location_assignment PIN_E16 -to HEX0[4]
+set_location_assignment PIN_D17 -to HEX0[5]
+set_location_assignment PIN_C17 -to HEX0[6]
+set_location_assignment PIN_D15 -to HEX0[7]
+
+# HEX1 (tich cuc thap)
+set_location_assignment PIN_C18 -to HEX1[0]
+set_location_assignment PIN_D18 -to HEX1[1]
+set_location_assignment PIN_E18 -to HEX1[2]
+set_location_assignment PIN_B16 -to HEX1[3]
+set_location_assignment PIN_A17 -to HEX1[4]
+set_location_assignment PIN_A18 -to HEX1[5]
+set_location_assignment PIN_B17 -to HEX1[6]
+set_location_assignment PIN_A16 -to HEX1[7]
+
+# -----------------------------------------------------------------------------
+# I/O standards
+# -----------------------------------------------------------------------------
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to MAX10_CLK1_50
+set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to KEY[0]
+set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to KEY[1]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[*]

@@ -1,0 +1,25 @@
+# Quartus generated files
+quartus/db/
+quartus/incremental_db/
+quartus/output_files/
+quartus/*.qws
+quartus/*.qdf
+quartus/*.qws.*
+
+# Simulator generated files
+sim/work/
+sim/transcript
+sim/vsim.wlf
+*.wlf
+*.vcd
+*.fst
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.venv/
+
+# Editor temporary files
+*~
+*.swp
+*.swo

@@ -1,0 +1,6 @@
+# Quartus Prime project file - Reed-Solomon tren DE10-Lite
+QUARTUS_VERSION = "25.1"
+DATE = "20:45:00  November 04, 2026"
+
+# Revisions
+PROJECT_REVISION = "ReedSolomon"
