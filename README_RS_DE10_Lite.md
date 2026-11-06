@@ -1,191 +1,122 @@
 # Reed–Solomon trên DE10-Lite — Module và bảng chân
 
-Tài liệu thiết kế cho bài tập lớn triển khai Reed–Solomon (RS) trong GF(256) trên board Terasic DE10-Lite bằng Verilog/SystemVerilog và Quartus.
+Tài liệu thiết kế và đặc tả kỹ thuật cho bài tập lớn triển khai bộ mã hóa và giải mã Reed–Solomon (RS) trong GF(256) trên kit phát triển Terasic DE10-Lite bằng Verilog HDL và Quartus Prime.
 
-> Trạng thái: kiến trúc và phân công chân đề xuất. Tài liệu này chưa khẳng định các module RTL đã được viết, mô phỏng hoặc chạy trên board.
+> **Trạng thái**: Các thông số kiến trúc đã được chốt và thống nhất. Toàn bộ các module số học GF(256), bộ mã hóa (`rs_encoder`), các khối con giải mã và bộ giải mã tích hợp (`rs_decoder`), cùng các khối giao tiếp ngoại vi (`hex_decoder`, `display_control`, `reset_sync`, `data_buffer`) đã được triển khai, kiểm chứng độc lập với mô hình Python và đạt 100% testbench mô phỏng.
+
+---
 
 ## 1. Phạm vi và mục tiêu
 
-- Mã hóa dữ liệu thành từ mã RS.
-- Tạo lỗi có kiểm soát để thử nghiệm.
-- Giải mã và sửa lỗi nếu phạm vi bài tập yêu cầu decoder.
-- Nhập từng symbol bằng switch; hiển thị một byte bằng hai LED 7 đoạn.
-- Bổ sung UART khi cần truyền cả khối dữ liệu với máy tính.
-- Dùng một clock hệ thống 50 MHz cho phiên bản đầu.
+- **Mã hóa systematic**: Nhận $K$ byte dữ liệu gốc, tính toán $R$ byte kiểm tra (parity) và xuất từ mã $N$ byte.
+- **Tạo lỗi có kiểm soát**: Cho phép thử nghiệm tiêm lỗi ngẫu nhiên hoặc có chủ đích để kiểm tra khả năng sửa sai.
+- **Giải mã và sửa lỗi tự động**: Tích hợp chuỗi thuật toán Syndrome $\rightarrow$ Berlekamp–Massey $\rightarrow$ Error Evaluator $\rightarrow$ Chien Search $\rightarrow$ Forney $\rightarrow$ Error Corrector $\rightarrow$ Re-verify.
+- **Giao tiếp ngoại vi trực quan**:
+  - Nhập từng symbol 8-bit bằng thanh Switch `SW[7:0]`, chốt bằng nút nhấn `KEY[1]`.
+  - Hiển thị trực tiếp từng byte dữ liệu/kết quả dạng hexadecimal bằng hai LED 7 đoạn `HEX1:HEX0`.
+  - Theo dõi tiến trình qua LED đỏ trạng thái: `LEDR[0]` (Busy), `LEDR[1]` (Done đã chốt), `LEDR[2]` (Fail đã chốt).
+- **Clock hệ thống**: Dùng nguồn clock 50 MHz (`MAX10_CLK1_50`, chu kỳ 20 ns).
 
-Mỗi symbol GF(256) có 8 bit, tương ứng một byte. Các khối GF và RS nằm bên trong FPGA; chúng kết nối bằng tín hiệu nội bộ, không cần chân ngoại vi riêng cho từng khối.
+### Bảng thông số kỹ thuật chuẩn của hệ thống:
 
-Các thông số phải chốt trước khi triển khai encoder và decoder:
+| Thông số | Giá trị chuẩn | Ý nghĩa | Trạng thái |
+| --- |:---:| --- |:---:|
+| Kích thước symbol `m` | **`8` bit** | Làm việc trong trường Galois GF(256), mỗi symbol là 1 byte | **Đã chốt** |
+| Độ dài từ mã `n` | **`15` symbol** | Mã rút ngắn từ mã cha RS(255, 251) | **Đã chốt** |
+| Độ dài dữ liệu `k` | **`11` symbol** | Số symbol dữ liệu gốc trong một khối mã | **Đã chốt** |
+| Số parity `r = n - k` | **`4` symbol** | Số symbol kiểm tra redundancy thêm vào cuối khối | **Đã chốt** |
+| Khả năng sửa lỗi `t` | **`2` symbol** | Sửa tối đa $t = \lfloor (n-k)/2 \rfloor = 2$ symbol lỗi bất kỳ trong từ mã 15 bytes | **Đã chốt** |
+| Đa thức trường `p(u)` | **`9'h11D`** | $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ (phần thấp 8-bit: `8'h1D`) | **Đã chốt** |
+| Phần tử nguyên thủy `alpha` | **`8'h02`** | $\alpha = u$, chu kỳ 255 phần tử khác 0 | **Đã chốt** |
+| Nghiệm đầu của `g(x)` | **`0`** | $g(x) = \prod_{j=0}^{R-1} (x + \alpha^{F + j})$ với $F = 0$ | **Đã chốt** |
+| Bước số mũ nghiệm | **`1`** | Các nghiệm là $\alpha^0, \alpha^1, \alpha^2, \alpha^3$ | **Đã chốt** |
+| Đa thức sinh $g(x)$ | **`x^4 + 0Fx^3 + 36x^2 + 78x + 40`** | Hệ số mảng: `[0x01, 0x0F, 0x36, 0x78, 0x40]` | **Đã chốt** |
+| Thứ tự truyền / lưu trữ | **Hệ số bậc cao trước** | $c[0]$ tương ứng $x^{N-1} = x^{14}$ truyền đầu; $c[N-1]$ tương ứng $x^0$ truyền cuối | **Đã chốt** |
 
-| Thông số | Ý nghĩa | Trạng thái |
-| --- | --- | --- |
-| `m = 8` | Số bit/symbol, làm việc trong GF(256) | Đã xác định |
-| `n` | Số symbol của một từ mã | Cần chốt |
-| `k` | Số symbol dữ liệu gốc | Cần chốt |
-| `r = n - k` | Số symbol kiểm tra | Theo n và k |
-| Đa thức trường `p(u)` | Quy định phép nhân/rút gọn trong GF(256) | Cần thống nhất |
-| Phần tử nguyên thủy `alpha` | Cơ sở biểu diễn các phần tử khác 0 dưới dạng lũy thừa | Cần thống nhất |
-| Nghiệm đầu của `g(x)` | Quy ước xây dựng đa thức sinh và syndrome | Cần thống nhất |
-| Thứ tự hệ số/symbol | Byte đầu tương ứng hệ số bậc cao hay thấp | Cần thống nhất |
+---
 
-Đối với RS thông dụng có độ dài tối đa 255 symbol trên GF(256), có thể dùng mã rút ngắn để thử nghiệm với khối nhỏ. Khi không biết trước vị trí lỗi, khả năng sửa lỗi bảo đảm là `t = floor((n-k)/2)` symbol mỗi từ mã.
+## 2. Các module RTL chính trong dự án
 
-## 2. Các module chính
+| Module / File RTL | Vai trò | Vị trí thư mục | Trạng thái |
+| --- | --- | --- |:---:|
+| `gf256_add.v` | Cộng/trừ trong GF(256) (phép XOR từng bit) | `rtl/gf_arithmetic/` | **Hoàn thành** |
+| `gf256_mul.v` | Nhân hai phần tử GF(256) (logic tổ hợp 8 bước dịch và rút gọn) | `rtl/gf_arithmetic/` | **Hoàn thành** |
+| `gf256_inv.v` | Nghịch đảo nhân $a^{-1} = a^{254}$ trong GF(256) qua LUT 256 byte | `rtl/gf_arithmetic/` | **Hoàn thành** |
+| `rs_encoder.v` | Nhận 11 byte dữ liệu, tính 4 byte parity qua LFSR, xuất từ mã 15 byte | `rtl/rs_encoder/` | **Hoàn thành** |
+| `syndrome.v` | Tính $R=4$ syndrome $S[0..3]$ từ chuỗi 15 symbol bằng thuật toán Horner | `rtl/rs_decoder/` | **Hoàn thành** |
+| `berlekamp_massey.v` | Tìm đa thức định vị lỗi $\Lambda(z)$ và bậc $L$ qua thuật toán BM | `rtl/rs_decoder/` | **Hoàn thành** |
+| `error_evaluator.v` | Tính đa thức đánh giá lỗi $\Omega(z) = [S(z) \cdot \Lambda(z)] \bmod z^R$ | `rtl/rs_decoder/` | **Hoàn thành** |
+| `chien_search.v` | Quét nghiệm của $\Lambda(z)$ tại 15 vị trí truyền ($X_i = \alpha^{14-i}$) | `rtl/rs_decoder/` | **Hoàn thành** |
+| `forney.v` | Tính giá trị lỗi $E_i = X_i \cdot \frac{\Omega(z_i)}{\Lambda'(z_i)}$ ($F=0$) | `rtl/rs_decoder/` | **Hoàn thành** |
+| `error_corrector.v` | XOR giá trị lỗi vào các symbol nhận để khôi phục từ mã | `rtl/rs_decoder/` | **Hoàn thành** |
+| `rs_decoder.v` | Bộ giải mã tích hợp điều phối toàn bộ các khối con và kiểm tra lại | `rtl/rs_decoder/` | **Hoàn thành** |
+| `data_buffer.v` | Bộ đệm lưu dữ liệu gốc và từ mã (hỗ trợ streaming và random access) | `rtl/memory/` | **Hoàn thành** |
+| `reset_sync.v` | Bộ đồng bộ reset 2 tầng flip-flop cho nút nhấn `KEY[0]` | `rtl/board/` | **Hoàn thành** |
+| `hex_decoder.v` | Giải mã 4-bit nibble sang mẫu LED 7 đoạn (tích cực thấp, DP tắt) | `rtl/board/` | **Hoàn thành** |
+| `display_control.v` | Chọn byte cần xem, chốt LEDR (Busy, Done, Fail) và điều khiển HEX1:HEX0 | `rtl/board/` | **Hoàn thành** |
+| `input_control.v` | Lọc dội phím (debounce) và đồng bộ Switch/Button | `rtl/board/` | **Hoàn thành** |
+| `top_de10_lite.v` | Module Top-Level kết nối ngoại vi board, controller và lõi RS | `rtl/board/` | **Đang tích hợp** |
 
-| Module / file dự kiến | Vai trò | Phạm vi |
-| --- | --- | --- |
-| `top_de10_lite.v` | Kết nối clock, ngoại vi, bộ điều khiển và các khối RS | Bắt buộc |
-| `gf_mul.v` | Nhân hai phần tử GF(256) | Encoder và decoder |
-| `gf_inv.v` hoặc `gf_div.v` | Nghịch đảo/chia trong GF(256) | Tùy kiến trúc decoder |
-| `rs_encoder.v` | Nhận k symbol, tính parity và xuất từ mã | Phần mã hóa |
-| `rs_decoder.v` | Tích hợp các bước tìm và sửa lỗi | Phần giải mã |
-| `data_buffer.v` | Lưu dữ liệu, từ mã và kết quả | Thanh ghi hoặc RAM M9K |
-| `rs_controller.v` | Quản lý các pha nhập, xử lý, xuất và hoàn tất | Có thể phân tán vào từng khối |
-| `input_control.v` | Đồng bộ đầu vào, xử lý nút nhấn, tạo xung xác nhận | Giao tiếp board |
-| `hex_decoder.v` | Đổi 4 bit thành mẫu 7 đoạn từ 0 đến F | Dùng hai instance |
-| `display_control.v` | Chọn byte cần xem, điều khiển HEX và LED trạng thái | Giao tiếp board |
-| `error_injector.v` | XOR mặt nạ lỗi vào các symbol được chọn | Demo/kiểm chứng |
-| `uart_rx.v`, `uart_tx.v` | Truyền byte với máy tính | Mở rộng |
+---
 
-Tên module là gợi ý tổ chức. Các khối nhỏ có thể gộp trong cùng file khi hợp lý.
+## 3. Luồng xử lý và giao diện bắt tay nội bộ
 
-### 2.1. Phép toán GF
+Luồng hoạt động chuẩn của hệ thống:
+1. **Pha nhập (Input Phase)**: Nhập $K=11$ symbol qua switch `SW[7:0]`, nhấn `KEY[1]` để chốt từng symbol vào bộ đệm `data_buffer`.
+2. **Pha mã hóa (Encoding)**: `rs_encoder` đọc 11 byte dữ liệu, tính 4 byte parity và tạo từ mã $N=15$ byte.
+3. **Pha tạo lỗi (Error Injection - Tùy chọn)**: Nếu gạt switch `SW[9] = 1`, bộ tiêm lỗi XOR mặt nạ lỗi vào một số symbol được chọn để thử nghiệm.
+4. **Pha giải mã (Decoding)**: `rs_decoder` nhận từ mã và tiến hành sửa lỗi theo 2 nhánh:
+   - **Nhánh không lỗi (Fast-path)**: Nếu toàn bộ 4 syndrome $S[0..3] = 0$, giữ nguyên từ mã nhận, chuyển thẳng sang xuất kết quả (`fail = 0`).
+   - **Nhánh có lỗi**: Thực hiện tuần tự Berlekamp–Massey $\rightarrow$ Error Evaluator $\rightarrow$ Chien Search $\rightarrow$ Forney $\rightarrow$ Error Corrector, sau đó tính lại syndrome trên từ mã đã sửa để xác nhận thành công hay thất bại.
+5. **Pha xuất & hiển thị (Output & Display)**: Dữ liệu được ghi vào bộ đệm kết quả, người dùng có thể duyệt từng byte để xem trên 2 LED 7 đoạn `HEX1:HEX0`.
 
-- Cộng và trừ: XOR từng bit.
-- Nhân: nhân đa thức nhị phân rồi rút gọn theo đa thức trường.
-- Nghịch đảo chỉ xác định với phần tử khác 0.
-- Các hệ số cố định, bảng lũy thừa hoặc bảng log có thể lưu trong ROM.
-- Không dùng phép nhân số nguyên `a * b` để thay trực tiếp cho nhân GF(256).
-- Không bắt buộc tạo module `gf_add`; có thể viết `assign sum = a ^ b;`.
+### Giao thức bắt tay Streaming:
+- Mỗi symbol được chấp nhận tại cạnh lên clock khi `valid && ready`.
+- Nguồn phát giữ nguyên dữ liệu trong suốt thời gian `valid = 1` nhưng `ready = 0` (hỗ trợ backpressure đầy đủ).
+- Tín hiệu `busy = 1` từ lúc bắt đầu nhận `start` đến khi hoàn tất.
+- Tín hiệu `done` phát xung 1 chu kỳ ngay khi symbol cuối cùng được nhận ở đầu ra.
+- Tín hiệu `fail` báo trạng thái thất bại được `display_control` chốt lại trên LED đỏ để người dùng quan sát.
 
-### 2.2. Các khối bên trong decoder
+---
 
-| Module con | Chức năng | Kết quả chính |
-| --- | --- | --- |
-| `syndrome_calc.v` | Đánh giá đa thức nhận tại các nghiệm quy định | Các syndrome |
-| `key_equation_solver.v` | Dùng Berlekamp–Massey hoặc Euclid | Đa thức định vị lỗi Lambda |
-| `error_evaluator.v` | Tính đa thức đánh giá lỗi từ syndrome và Lambda | Đa thức Omega |
-| `chien_search.v` | Tìm nghiệm của Lambda và ánh xạ sang vị trí symbol | Danh sách vị trí lỗi |
-| `forney_calc.v` | Tính giá trị lỗi tại các vị trí tìm được | Giá trị lỗi |
-| `error_corrector.v` | XOR giá trị lỗi vào symbol nhận | Từ mã đã hiệu chỉnh |
+## 4. Phân công ngoại vi trên board DE10-Lite
 
-Khối tính Omega có thể gộp vào bộ giải phương trình khóa. Chọn một quy ước đa thức và ánh xạ vị trí thống nhất cho toàn bộ decoder.
+| Ngoại vi | Chân FPGA | I/O Standard | Chức năng hoạt động |
+| --- |:---:|:---:| --- |
+| `MAX10_CLK1_50` | `PIN_P11` | 3.3-V LVTTL | Nguồn xung nhịp hệ thống 50 MHz (chu kỳ 20.0 ns) |
+| `KEY[0]` | `PIN_B8` | 3.3 V SCHMITT TRIGGER | Nút nhấn Reset hệ thống (tích cực thấp: nhấn = 0, thả = 1) |
+| `KEY[1]` | `PIN_A7` | 3.3 V SCHMITT TRIGGER | Xác nhận chốt 1 byte từ SW / Bắt đầu thao tác chạy |
+| `SW[7:0]` | `PIN_C10` .. `PIN_A14` | 3.3-V LVTTL | Đặt giá trị 8-bit cho 1 symbol (gạt lên = 1, gạt xuống = 0) |
+| `SW[8]` | `PIN_B14` | 3.3-V LVTTL | Chọn chế độ: `0` = Pha nhập dữ liệu, `1` = Pha xử lý / xem kết quả |
+| `SW[9]` | `PIN_F15` | 3.3-V LVTTL | Cho phép tiêm lỗi: `0` = Giữ nguyên, `1` = Tạo lỗi thử nghiệm |
+| `LEDR[0]` | `PIN_A8` | 3.3-V LVTTL | Đèn đỏ báo `Busy` (sáng khi mạch đang xử lý) |
+| `LEDR[1]` | `PIN_A9` | 3.3-V LVTTL | Đèn đỏ báo `Done` (đã chốt sáng sau khi hoàn tất xử lý) |
+| `LEDR[2]` | `PIN_A10` | 3.3-V LVTTL | Đèn đỏ báo `Fail` (đã chốt sáng nếu phát hiện giải mã thất bại) |
+| `HEX1` | `PIN_C18` .. `PIN_A16` | 3.3-V LVTTL | Hiển thị 4 bit cao (MSB nibble) của byte đang xem |
+| `HEX0` | `PIN_C14` .. `PIN_D15` | 3.3-V LVTTL | Hiển thị 4 bit thấp (LSB nibble) của byte đang xem |
 
-`fail` biểu thị thất bại mà decoder phát hiện. Khi số lỗi vượt khả năng sửa, decoder có thể giải mã nhầm; không được xem `fail = 0` là bảo đảm khôi phục đúng dữ liệu gốc trong mọi trường hợp.
+---
 
-## 3. Luồng xử lý và giao diện nội bộ
+## 5. Bảng chân chi tiết LED 7 đoạn HEX0 và HEX1
 
-Luồng demo dự kiến:
+Cả hai bộ hiển thị đều tích cực mức thấp (`0` là sáng đoạn, `1` là tắt đoạn). Dấu chấm thập phân `DP` luôn đặt bằng `1'b1` (tắt).
 
-1. Nhập k symbol và lưu bản gốc.
-2. Encoder tạo n symbol của từ mã.
-3. Bộ tạo lỗi giữ nguyên hoặc thay đổi một số symbol.
-4. Decoder nhận từ mã và tìm/sửa lỗi.
-5. Xuất dữ liệu; khi kiểm thử, đối chiếu với bản gốc.
+| Chỉ số bit | Đoạn LED | Vị trí trên LED | Chân `HEX0` | Chân `HEX1` | Mẫu hiển thị ví dụ `8'hA7` |
+|:---:|:---:|:---:|:---:|:---:|---|
+| `[0]` | **a** | Cạnh trên | `PIN_C14` | `PIN_C18` | `HEX1` hiển thị chữ **A** (`8'h88`) |
+| `[1]` | **b** | Cạnh phải trên | `PIN_E15` | `PIN_D18` | `HEX0` hiển thị số **7** (`8'hF8`) |
+| `[2]` | **c** | Cạnh phải dưới | `PIN_C15` | `PIN_E18` | |
+| `[3]` | **d** | Cạnh dưới | `PIN_C16` | `PIN_B16` | |
+| `[4]` | **e** | Cạnh trái dưới | `PIN_E16` | `PIN_A17` | |
+| `[5]` | **f** | Cạnh trái trên | `PIN_D17` | `PIN_A18` | |
+| `[6]` | **g** | Vạch giữa | `PIN_C17` | `PIN_B17` | |
+| `[7]` | **DP** | Dấu chấm | `PIN_D15` | `PIN_A16` | Luôn tắt (`1'b1`) |
 
-Nếu đầu vào đã là từ mã cần sửa, có thể đưa trực tiếp vào decoder.
+---
 
-| Tín hiệu | Ý nghĩa |
-| --- | --- |
-| `clk` | Clock hệ thống |
-| `rst_n` | Reset nội bộ, mức thấp có hiệu lực |
-| `data_in[7:0]` | Symbol đưa vào một khối |
-| `in_valid`, `in_ready` | Bắt tay đầu vào |
-| `data_out[7:0]` | Symbol đầu ra |
-| `out_valid`, `out_ready` | Bắt tay đầu ra |
-| `start` | Yêu cầu bắt đầu một thao tác |
-| `busy` | Đang xử lý |
-| `done` | Thao tác đã hoàn tất |
-| `fail` | Phát hiện giải mã thất bại |
+## 6. Khai báo Top-Level và ràng buộc SDC
 
-Một symbol được chấp nhận tại cạnh lên clock khi `valid && ready`. Nguồn giữ nguyên dữ liệu trong lúc `valid = 1` nhưng `ready = 0`. Quy ước `start/done` dạng xung phải được ghi rõ trong từng module.
-
-Đèn trạng thái cần giữ thông tin đủ lâu để quan sát. Nếu `done` hoặc `fail` của lõi chỉ kéo dài một chu kỳ, `display_control` phải chốt lại trạng thái đó.
-
-## 4. Phân công ngoại vi cho bản demo
-
-| Ngoại vi | Chức năng đề xuất |
-| --- | --- |
-| `MAX10_CLK1_50` | Clock 50 MHz |
-| `KEY[0]` | Reset |
-| `KEY[1]` | Xác nhận nhập / bắt đầu thao tác, tùy trạng thái |
-| `SW[7:0]` | Một byte dữ liệu |
-| `SW[8]` | Chọn pha nhập hoặc chạy; tùy chọn |
-| `SW[9]` | Cho phép tạo lỗi; tùy chọn |
-| `LEDR[0]` | Busy |
-| `LEDR[1]` | Done đã chốt để quan sát |
-| `LEDR[2]` | Fail đã chốt để quan sát |
-| `HEX1` | Bốn bit cao của byte đang xem |
-| `HEX0` | Bốn bit thấp của byte đang xem |
-
-Cách dùng dự kiến: đặt byte bằng SW[7:0], nhấn KEY[1] để chốt từng symbol; sau khi đủ dữ liệu, chuyển sang pha chạy rồi nhấn KEY[1]. Các switch chọn chế độ phải được chốt tại thời điểm thích hợp, tránh đổi chế độ giữa một lần xử lý.
-
-SW[9] chỉ cho phép tạo lỗi; vị trí và mặt nạ lỗi ban đầu có thể đặt bằng hằng số hoặc kịch bản thử. Việc duyệt nhiều byte kết quả cần được thiết kế trong bộ điều khiển; hai HEX chỉ hiển thị một byte tại một thời điểm.
-
-## 5. Bảng chân FPGA dùng trong Quartus
-
-Các mã PIN dưới đây là vị trí chân của chip FPGA, không phải số thứ tự chân trên đầu nối GPIO.
-
-### 5.1. Clock và nút nhấn
-
-| Cổng top-level | Chân FPGA | I/O Standard |
-| --- | --- | --- |
-| `MAX10_CLK1_50` | `PIN_P11` | 3.3-V LVTTL |
-| `KEY[0]` | `PIN_B8` | 3.3 V SCHMITT TRIGGER |
-| `KEY[1]` | `PIN_A7` | 3.3 V SCHMITT TRIGGER |
-
-KEY là nút tích cực thấp: nhấn = 0, thả = 1. Dùng clock hệ thống để lấy mẫu và tạo xung từ nút nhấn; không dùng nút làm clock cho lõi RS. Đồng bộ tín hiệu và xử lý dội theo yêu cầu thực tế.
-
-### 5.2. Switch
-
-| Cổng top-level | Chân FPGA | Phân công |
-| --- | --- | --- |
-| `SW[0]` | `PIN_C10` | Bit 0, LSB |
-| `SW[1]` | `PIN_C11` | Bit 1 |
-| `SW[2]` | `PIN_D12` | Bit 2 |
-| `SW[3]` | `PIN_C12` | Bit 3 |
-| `SW[4]` | `PIN_A12` | Bit 4 |
-| `SW[5]` | `PIN_B12` | Bit 5 |
-| `SW[6]` | `PIN_A13` | Bit 6 |
-| `SW[7]` | `PIN_A14` | Bit 7, MSB |
-| `SW[8]` | `PIN_B14` | Chọn chế độ, tùy chọn |
-| `SW[9]` | `PIN_F15` | Cho phép tạo lỗi, tùy chọn |
-
-I/O Standard: 3.3-V LVTTL. Theo tài liệu board, gạt xuống phía mép board là 0; gạt lên là 1.
-
-### 5.3. LED trạng thái
-
-| Cổng top-level | Chân FPGA | Phân công |
-| --- | --- | --- |
-| `LEDR[0]` | `PIN_A8` | Busy |
-| `LEDR[1]` | `PIN_A9` | Done |
-| `LEDR[2]` | `PIN_A10` | Fail |
-
-I/O Standard: 3.3-V LVTTL. LED đỏ sáng khi đầu ra bằng 1.
-
-### 5.4. HEX0 và HEX1
-
-| Chỉ số | Đoạn | Chân HEX0 | Chân HEX1 |
-| --- | --- | --- | --- |
-| `[0]` | a — trên | `PIN_C14` | `PIN_C18` |
-| `[1]` | b — phải trên | `PIN_E15` | `PIN_D18` |
-| `[2]` | c — phải dưới | `PIN_C15` | `PIN_E18` |
-| `[3]` | d — dưới | `PIN_C16` | `PIN_B16` |
-| `[4]` | e — trái dưới | `PIN_E16` | `PIN_A17` |
-| `[5]` | f — trái trên | `PIN_D17` | `PIN_A18` |
-| `[6]` | g — giữa | `PIN_C17` | `PIN_B17` |
-| `[7]` | DP — dấu chấm | `PIN_D15` | `PIN_A16` |
-
-I/O Standard: 3.3-V LVTTL. Các đoạn tích cực thấp: 0 sáng, 1 tắt. Đặt `HEX0[7] = HEX1[7] = 1'b1` nếu không dùng dấu chấm.
-
-Ví dụ byte `8'hA7`: HEX1 hiển thị A, HEX0 hiển thị 7. Cần đổi từng nibble qua bộ giải mã 7 đoạn, không nối trực tiếp 4 bit dữ liệu vào chân đoạn.
-
-Bảng này gồm 32 chân tín hiệu nếu dùng cả hai DP; 30 chân nếu bỏ hai DP.
-
-## 6. Khai báo cổng top-level dự kiến
-
-Đây chỉ là khung khai báo cổng; cần bổ sung logic trước khi tổng hợp và nạp.
-
+### Khung module Top-Level:
 ```verilog
 module top_de10_lite (
     input  wire       MAX10_CLK1_50,
@@ -195,129 +126,35 @@ module top_de10_lite (
     output wire [7:0] HEX0,
     output wire [7:0] HEX1
 );
-    // Ket noi bo dieu khien, khoi RS va ngoai vi tai day.
+    // Kết nối reset_sync, input_control, data_buffer, rs_controller,
+    // rs_encoder, rs_decoder, display_control và hex_decoder tại đây.
 endmodule
 ```
 
-Các tên cổng phải khớp chính xác với tên dùng trong QSF. Nếu đổi tên cổng hoặc độ rộng bus, cập nhật bảng gán chân tương ứng.
-
-## 7. Mẫu gán chân QSF
-
-Đoạn dưới dành cho giao diện top-level ở mục 6, dùng cả hai DP. Dùng Pin Planner hoặc đưa các lệnh này vào QSF của project. Tránh giữ các gán chân cũ trùng với tín hiệu đang dùng.
-
-```tcl
-# Clock
-set_location_assignment PIN_P11 -to MAX10_CLK1_50
-
-# Keys
-set_location_assignment PIN_B8 -to {KEY[0]}
-set_location_assignment PIN_A7 -to {KEY[1]}
-
-# Switches
-set_location_assignment PIN_C10 -to {SW[0]}
-set_location_assignment PIN_C11 -to {SW[1]}
-set_location_assignment PIN_D12 -to {SW[2]}
-set_location_assignment PIN_C12 -to {SW[3]}
-set_location_assignment PIN_A12 -to {SW[4]}
-set_location_assignment PIN_B12 -to {SW[5]}
-set_location_assignment PIN_A13 -to {SW[6]}
-set_location_assignment PIN_A14 -to {SW[7]}
-set_location_assignment PIN_B14 -to {SW[8]}
-set_location_assignment PIN_F15 -to {SW[9]}
-
-# Status LEDs
-set_location_assignment PIN_A8  -to {LEDR[0]}
-set_location_assignment PIN_A9  -to {LEDR[1]}
-set_location_assignment PIN_A10 -to {LEDR[2]}
-
-# HEX0
-set_location_assignment PIN_C14 -to {HEX0[0]}
-set_location_assignment PIN_E15 -to {HEX0[1]}
-set_location_assignment PIN_C15 -to {HEX0[2]}
-set_location_assignment PIN_C16 -to {HEX0[3]}
-set_location_assignment PIN_E16 -to {HEX0[4]}
-set_location_assignment PIN_D17 -to {HEX0[5]}
-set_location_assignment PIN_C17 -to {HEX0[6]}
-set_location_assignment PIN_D15 -to {HEX0[7]}
-
-# HEX1
-set_location_assignment PIN_C18 -to {HEX1[0]}
-set_location_assignment PIN_D18 -to {HEX1[1]}
-set_location_assignment PIN_E18 -to {HEX1[2]}
-set_location_assignment PIN_B16 -to {HEX1[3]}
-set_location_assignment PIN_A17 -to {HEX1[4]}
-set_location_assignment PIN_A18 -to {HEX1[5]}
-set_location_assignment PIN_B17 -to {HEX1[6]}
-set_location_assignment PIN_A16 -to {HEX1[7]}
-
-# I/O standards
-set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to MAX10_CLK1_50
-set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to {KEY[0]}
-set_instance_assignment -name IO_STANDARD "3.3 V SCHMITT TRIGGER" -to {KEY[1]}
-
-foreach port {SW[0] SW[1] SW[2] SW[3] SW[4] SW[5] SW[6] SW[7] SW[8] SW[9] LEDR[0] LEDR[1] LEDR[2] HEX0[0] HEX0[1] HEX0[2] HEX0[3] HEX0[4] HEX0[5] HEX0[6] HEX0[7] HEX1[0] HEX1[1] HEX1[2] HEX1[3] HEX1[4] HEX1[5] HEX1[6] HEX1[7]} {
-    set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to $port
-}
-```
-
-Project cần chọn đúng FPGA `10M50DAF484C7G` và top-level `top_de10_lite`.
-
-## 8. Clock và ràng buộc thời gian
-
-Clock 50 MHz có chu kỳ 20 ns. Khai báo clock cơ sở trong SDC:
-
+### Ràng buộc thời gian (Timing Constraint - SDC):
 ```tcl
 create_clock -name sys_clk -period 20.000 [get_ports {MAX10_CLK1_50}]
+derive_clock_uncertainty
 ```
 
-Đây là khai báo clock tối thiểu, chưa phải toàn bộ ràng buộc thời gian cho một hệ thống hoàn chỉnh. Bổ sung ràng buộc phù hợp khi thiết kế đồng bộ đầu vào, reset, PLL hoặc giao tiếp ngoài. Không thêm ngoại lệ timing chỉ để che cảnh báo.
+---
 
-## 9. UART khi mở rộng
+## 7. Kế hoạch kiểm chứng và kết quả đạt được
 
-Phiên bản nhập bằng switch chưa cần UART. Khi bổ sung USB–UART TTL mức 3,3 V, có thể chọn:
-
-| Tín hiệu dự kiến | Chân vật lý JP1 | Chân FPGA |
-| --- | --- | --- |
-| FPGA RX — `GPIO[0]` | 1 | `PIN_V10` |
-| FPGA TX — `GPIO[1]` | 2 | `PIN_W10` |
-| GND | 12 | Không gán trong Quartus |
-
-Đây là phân công tùy chọn cho GPIO, không phải UART cố định trên chip. Nối TX của bộ chuyển vào FPGA RX, RX vào FPGA TX và nối chung GND. GPIO digital dùng mức 3,3 V.
-
-Nếu dùng UART, thêm các port RX/TX và gán chân trong project. Cổng USB-Blaster trên board phục vụ nạp/debug qua JTAG; nó không tự trở thành cổng COM của UART RTL.
-
-## 10. Kiểm chứng
-
-| Thành phần kiểm tra | Mục đích |
-| --- | --- |
-| Mô hình Python | Kết quả tham chiếu độc lập |
-| `tb_gf_mul` | Kiểm tra phép nhân GF; có thể đối chiếu đủ 256 x 256 cặp |
-| `tb_rs_encoder` | Kiểm tra toàn bộ từ mã và parity |
-| `tb_rs_decoder` | Kiểm tra các mẫu lỗi và dữ liệu khôi phục |
-| `tb_top` | Kiểm tra thứ tự nhập, bắt tay và điều khiển |
-
-Các trường hợp cần có: không lỗi; một lỗi; nhiều lỗi đến giới hạn sửa; lỗi ở đầu/cuối khối; dữ liệu toàn 0; reset; dữ liệu đến có khoảng nghỉ; đầu ra bị chặn nếu dùng ready/valid. Với lỗi vượt giới hạn, ghi nhận cả báo fail và khả năng giải mã nhầm.
-
-Testbench chạy trên simulator, không nạp thành phần cứng. Mô hình Python và RTL phải dùng cùng tham số RS và quy ước symbol.
-
-## 11. Thứ tự triển khai
-
-1. Kiểm tra clock, switch, nút nhấn, LED và HEX.
-2. Hoàn thành GF multiplier và testbench.
-3. Hoàn thành encoder, đối chiếu với Python.
-4. Chạy encoder trên board với bộ đệm và FSM.
-5. Triển khai lần lượt các khối decoder.
-6. Thêm bộ tạo lỗi và kiểm chứng end-to-end.
-7. Bổ sung UART và đo chu kỳ xử lý, tài nguyên, timing.
-
-Chưa cần SDRAM ngoài, VGA hay xử lý ảnh QR cho bản demo lõi RS đầu tiên. Nếu dùng dữ liệu QR, máy tính có thể trích xuất đúng từng khối RS và gửi các codeword sang FPGA.
-
-## 12. Tài liệu tham khảo
-
-- [Terasic — DE10-Lite Specifications](https://www.terasic.com.tw/cgi-bin/page/archive.pl?CategoryNo=218&Language=English&No=1021&PartNo=2).
-- [DE10-Lite User Manual — bản Terasic ngày 05/06/2020](https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/73/DE10_2D00_Lite_5F00_User_5F00_Manual.pdf): trang in 24–29 cho clock/KEY/SW/LED/HEX; trang 30–31 cho JP1.
-- [MathWorks — RS Decoder, kiến trúc giải mã hỗ trợ HDL](https://www.mathworks.com/help/wireless-hdl/ref/rsdecoder.html).
-- [MathWorks — Integer-Output RS Decoder, khả năng sửa lỗi symbol](https://www.mathworks.com/help/comm/ref/integeroutputrsdecoder.html).
-
-Bảng chân lấy từ tài liệu phần cứng; chức năng nút, switch, LED, cách chia module và giao thức điều khiển là đề xuất của dự án.
-
+Hệ thống được xác minh bằng 3 tầng kiểm chứng độc lập:
+1. **Mô hình tham chiếu Python (`model/`)**:
+   - `gf256_model.py`: Kiểm chứng $100\%$ đúng đắn cho $65,536$ phép nhân và toàn bộ phép nghịch đảo.
+   - `rs_reference.py`: Mô phỏng thuật toán toán học, đối chiếu với chuẩn lý thuyết và sinh các vector kiểm thử mẫu (`vectors/`).
+2. **Bộ Testbench Verilog (`tb/`)**:
+   - `tb_gf256_mul`: **PASS** (72,820 kiểm tra).
+   - `tb_gf256_inv`: **PASS** (1,538 kiểm tra).
+   - `tb_rs_encoder`: **PASS** (921 kiểm tra).
+   - `tb_syndrome`: **PASS** (3,341 kiểm tra).
+   - `tb_berlekamp_massey`: **PASS** (10,437 kiểm tra).
+   - `tb_error_evaluator`: **PASS** (2,971 kiểm tra).
+   - `tb_chien_search`: **PASS** (2,834 kiểm tra).
+   - `tb_forney`: **PASS** (5,525 kiểm tra).
+   - `tb_rs_decoder`: **PASS** (4,465 kiểm tra).
+   - `tb_top`: Kiểm tra giao dịch ngoại vi, nút bấm, debounce và LED hiển thị.
+3. **Kiểm thử trên phần cứng thực tế**:
+   - Chạy trên FPGA Cyclone 10 LP / MAX 10 `10M50DAF484C7G` với kit DE10-Lite.

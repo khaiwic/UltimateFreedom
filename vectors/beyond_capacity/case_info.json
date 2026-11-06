@@ -1,0 +1,32 @@
+{
+    "description": "Vượt quá khả năng sửa lỗi (3 lỗi > T=2)",
+    "code_parameters": {
+        "n": 15,
+        "k": 11,
+        "r": 4,
+        "t": 2
+    },
+    "errors_injected": [
+        {
+            "index": 1,
+            "xor_mask": "0x45",
+            "original_byte": "0x22"
+        },
+        {
+            "index": 5,
+            "xor_mask": "0x67",
+            "original_byte": "0x66"
+        },
+        {
+            "index": 9,
+            "xor_mask": "0x89",
+            "original_byte": "0xAA"
+        }
+    ],
+    "expected_behavior": {
+        "fail_flag_expected": true,
+        "decoder_result_fail": true,
+        "lambda_degree": 2,
+        "note": "Khi số lỗi vượt quá T=2, bộ giải mã RS có thể báo cờ fail=1 hoặc giải mã nhầm sang từ mã khác có khoảng cách gần hơn."
+    }
+}

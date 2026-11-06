@@ -39,6 +39,7 @@ module tb_gf256_mul;
     reg [7:0] xr;
     reg [7:0] y1, y2, y3;
     reg [7:0] c;
+    reg [7:0] ra, rb, rc;
 
     task apply;
         input [7:0] ta;
@@ -97,25 +98,25 @@ module tb_gf256_mul;
         end
 
         for (k = 0; k < 2000; k = k + 1) begin
-            a = $random(seed); b = $random(seed); c = $random(seed);
+            ra = $random(seed); rb = $random(seed); rc = $random(seed);
             // giao hoan
-            apply(a, b); y1 = y;
-            apply(b, a); y2 = y;
+            apply(ra, rb); y1 = y;
+            apply(rb, ra); y2 = y;
             n_chk = n_chk + 1;
-            if (y1 !== y2) begin n_err = n_err + 1; $display("LOI giao hoan: %h,%h", a, b); end
+            if (y1 !== y2) begin n_err = n_err + 1; $display("LOI giao hoan: %h,%h", ra, rb); end
             // phan phoi: a*(b^c) = a*b ^ a*c
-            apply(a, b); y1 = y;
-            apply(a, c); y2 = y;
-            apply(a, b ^ c); y3 = y;
+            apply(ra, rb); y1 = y;
+            apply(ra, rc); y2 = y;
+            apply(ra, rb ^ rc); y3 = y;
             n_chk = n_chk + 1;
-            if (y3 !== (y1 ^ y2)) begin n_err = n_err + 1; $display("LOI phan phoi: %h,%h,%h", a, b, c); end
+            if (y3 !== (y1 ^ y2)) begin n_err = n_err + 1; $display("LOI phan phoi: %h,%h,%h", ra, rb, rc); end
             // ket hop: (a*b)*c = a*(b*c)
-            apply(a, b); y1 = y;
-            apply(y1, c); y1 = y;
-            apply(b, c); y2 = y;
-            apply(a, y2); y2 = y;
+            apply(ra, rb); y1 = y;
+            apply(y1, rc); y1 = y;
+            apply(rb, rc); y2 = y;
+            apply(ra, y2); y2 = y;
             n_chk = n_chk + 1;
-            if (y1 !== y2) begin n_err = n_err + 1; $display("LOI ket hop: %h,%h,%h", a, b, c); end
+            if (y1 !== y2) begin n_err = n_err + 1; $display("LOI ket hop: %h,%h,%h", ra, rb, rc); end
         end
 
         // ---- 4. Vi du co dinh
