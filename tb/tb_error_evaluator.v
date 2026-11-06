@@ -25,8 +25,6 @@
 //   5. Lambda/S ngau nhien voi L = 0..R (chi he so j <= L co nghia): kiem tra phep nhan da thuc.
 //   6. Reset giua phep tinh va chay lien tiep.
 //
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v \
-//            ../rtl/rs_decoder/error_evaluator.v tb_error_evaluator.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

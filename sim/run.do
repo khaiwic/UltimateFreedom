@@ -20,41 +20,39 @@ if {[file exists work]} {
 vlib work
 vmap work work
 
-# 3. Chon testbench can chay
-# Mac dinh la tb_rs_decoder (kiem tra toan dien nhat bo giai ma va chuoi thuat toan)
+# 3. Chon testbench can chay (mac dinh la tb_rs_decoder)
 set TB "tb_rs_decoder"
-if {$argc > 0} {
-    set TB [lindex $argv 0]
+if {[info exists 1]} {
+    set TB $1
 }
 echo "========================================================================"
-echo ">> [SIM] Bat dau bien dich va mo phong voi Testbench: $TB"
+echo ">> SIM: Bat dau bien dich va mo phong voi Testbench: $TB"
 echo "========================================================================"
 
 # 4. Bien dich toan bo ma nguon RTL qua file list rtl_files.f
-echo ">> [SIM] Dang bien dich cac file RTL tu rtl_files.f ..."
+echo ">> SIM: Dang bien dich cac file RTL tu rtl_files.f ..."
 vlog -work work +incdir+../rtl/include -f rtl_files.f
 
 # 5. Bien dich testbench duoc chon
-echo ">> [SIM] Dang bien dich testbench: ../tb/${TB}.v ..."
-vlog -work work +incdir+../rtl/include +incdir+../tb ../tb/${TB}.v
+echo ">> SIM: Dang bien dich testbench: ../tb/$TB.v ..."
+vlog -work work +incdir+../rtl/include +incdir+../tb ../tb/$TB.v
 
 # 6. Khoi dong mo phong (vsim)
-echo ">> [SIM] Dang khoi tao phien mo phong vsim ..."
-vsim -voptargs="+acc" -t 1ps work.${TB}
+echo ">> SIM: Dang khoi tao phien mo phong vsim ..."
+vsim -voptargs="+acc" -t 1ps work.$TB
 
 # 7. Nap cau hinh dang song Waveform (wave.do) neu co
 if {[file exists wave.do]} {
-    echo ">> [SIM] Dang nap cau hinh waveform tu wave.do ..."
+    echo ">> SIM: Dang nap cau hinh waveform tu wave.do ..."
     do wave.do
 }
 
 # 8. Chay mo phong
-echo ">> [SIM] Dang chay mo phong (run -all) ..."
+echo ">> SIM: Dang chay mo phong (run -all) ..."
 run -all
 
 # 9. Canh chinh khung hien thi song
-wave zoom full
+catch {wave zoom full}
 echo "========================================================================"
-echo ">> [SIM] Hoan tat mo phong cho $TB!"
+echo ">> SIM: Hoan tat mo phong cho $TB!"
 echo "========================================================================"
-

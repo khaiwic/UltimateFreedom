@@ -27,9 +27,6 @@
 //   4. Hai loi tai moi cap (ke ca S[0] = 0, 2 gia tri bang nhau): err_val == mau loi that.
 //   5. Lambda'(z_i) = 0 -> fail = 1.
 //   6. Reset giua phep tinh; chay lien tiep, ket qua giu on dinh sau done.
-//
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v \
-//            ../rtl/rs_decoder/forney.v tb_forney.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

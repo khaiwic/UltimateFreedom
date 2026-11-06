@@ -1,9 +1,3 @@
-# =============================================================================
-# wave.do - Cau hinh hien thi tin hieu Waveform trong ModelSim / QuestaSim
-#
-# Duoc goi tu dong boi run.do hoac go lenh: do wave.do
-# =============================================================================
-
 onerror {resume}
 quietly WaveActivateNextPane {} 0
 

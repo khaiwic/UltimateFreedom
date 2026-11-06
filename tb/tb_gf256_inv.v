@@ -1,15 +1,3 @@
-// tb_gf256_inv.v
-// Testbench cho rtl/gf_arithmetic/gf256_inv.v
-//
-// Hop dong (docs/gf256.md muc 5-6, header gf256_inv.v):
-//   a != 0 : y = a^-1, valid = 1, zero_err = 0, gf_mul(a, y) = 01
-//   a == 0 : y = 00,   valid = 0, zero_err = 1
-//
-// Noi dung: duyet day du 256 gia tri a; kiem tra a*y = 1, (a^-1)^-1 = a,
-// inv la song anh, cac gia tri co dinh (inv(01)=01, inv(02)=8E),
-// valid/zero_err loai tru lan nhau, dau ra khong X/Z.
-//
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/gf256_inv.v tb_gf256_inv.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

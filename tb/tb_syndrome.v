@@ -1,32 +1,3 @@
-// tb_syndrome.v
-// Testbench cho rtl/rs_decoder/syndrome.v  (RS(15,11), nghiem dau F = 0)
-//
-// *** GIAO DIEN GIA DINH (rtl/rs_decoder/syndrome.v hien con trong, docs/interfaces.md
-// *** cung trong). Neu khac, chi can sua phan khai bao/noi cong `dut` ben duoi. ***
-//
-//   module syndrome (
-//     input  clk, rst_n,
-//     input  start,                  // xung 1 chu ky: xoa bo tich luy, bat dau khoi moi
-//     input  [7:0] data_in,          // y[0] truoc (he so bac cao truoc)
-//     input  in_valid,
-//     output in_ready,               // nhan symbol khi in_valid && in_ready
-//     output [8*R-1:0] syn,          // S[j] o [8*j +: 8], hop le khi done, giu den start ke tiep
-//     output syn_zero,               // 1 khi tat ca S[j] = 0 (hop le cung luc voi done)
-//     output busy,
-//     output done                    // xung 1 chu ky sau khi nhan symbol thu N
-//   );
-//
-// Noi dung test:
-//   1. Vi du docs muc 12: y = 55 01 .. C0 8F 28 CA -> S = [F3, 60, 0D, 24].
-//   2. Tu ma hop le (khong loi) -> S = 0, syn_zero = 1; tu ma toan 0.
-//   3. Mot loi tai MOI vi tri 0..N-1 voi nhieu gia tri (ke ca vi tri parity).
-//   4. Hai loi tai MOI cap vi tri; co truong hop S[0] = 0 nhung cac S khac != 0.
-//   5. Tu nhan ngau nhien bat ky (syndrome xac dinh voi moi y) va nhieu loi > T.
-//   6. Dau vao co khoang nghi (in_valid ngat quang).
-//   7. Reset giua khoi; hai khoi lien tiep; syn giu on dinh sau done.
-//
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v \
-//            ../rtl/rs_decoder/syndrome.v tb_syndrome.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

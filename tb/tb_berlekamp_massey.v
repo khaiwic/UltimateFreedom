@@ -23,8 +23,6 @@
 //   6. Syndrome khac 0 ngau nhien bat ky.
 //   7. Cac lan chay lien tiep, ket qua giu on dinh sau done, reset giua phep tinh.
 //
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v \
-//            ../rtl/rs_decoder/berlekamp_massey.v tb_berlekamp_massey.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

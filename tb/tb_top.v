@@ -1,35 +1,3 @@
-// tb_top.v
-// Testbench cap board cho rtl/board/top_de10_lite.v  (README muc 4, 6; docs/pin_assignment.md)
-//
-// Kiem tra HANH VI NGOAI VI nhin tu cac chan cua board, khong can biet cau truc ben trong:
-//   MAX10_CLK1_50, KEY[0] = reset (tich cuc thap), KEY[1] = xac nhan nhap / bat dau,
-//   SW[7:0] = byte du lieu, SW[8] = pha nhap (0) / pha chay (1), SW[9] = cho phep tao loi,
-//   LEDR[0] = busy, LEDR[1] = done (chot), LEDR[2] = fail (chot), HEX1:HEX0 = byte dang xem.
-//
-// Dung theo README, KHONG gia dinh them nhung gi README chua chot:
-//   - Hien thi tung byte ket qua tren HEX (thu tu duyet) CHUA duoc README quy dinh nen chi kiem tra
-//     HEX luon la mau 7 doan hop le (0..F hoac tat), DP tat (bit 7 = 1). Dat CHECK_HEX_ECHO = 1
-//     neu thiet ke cua ban hien thi lai byte vua chot tren HEX; khi do se doi chieu mau 7 doan.
-//   - Mau loi ban dau la hang so/kich ban thu trong thiet ke; mac dinh mong doi tao loi <= T
-//     nen decoder sua duoc va fail = 0 (EXPECT_FAIL_WITH_ERR = 0). Dat 1 neu mau loi vuot T.
-//
-// Noi dung test:
-//   1. Sau reset: LEDR = 000, HEX hop le, DP tat, khong X.
-//   2. Pha nhap: nhap K = 11 symbol bang SW[7:0] + KEY[1]; trong pha nhap busy/done/fail = 0.
-//   3. Nhieu ngan ngan (glitch) tren KEY[1] KHONG duoc bat dau xu ly (loc doi / debounce).
-//   4. Chuyen SW[8] = 1 roi nhan KEY[1]: busy len 1 dung mot lan, ket thuc voi done = 1, busy = 0,
-//      fail = 0; done duoc chot du lau de quan sat (HOLD_CYCLES); giu KEY[1] lau khong chay lai.
-//   5. Lap lai voi SW[9] = 1 (tao loi): decoder van sua dung (fail = 0).
-//   6. Reset (KEY[0]) trong luc busy / sau done xoa het LED; sau do chay lai dung.
-//
-// Thoi gian mo phong: input_control mac dinh DEBOUNCE_CYCLES = 500_000 (10 ms), moi lan nhan phai
-// giu > 500_000 chu ky => mo phong day du tuong doi dai. De chay nhanh: dung defparam/giam
-// DEBOUNCE_CYCLES trong input_control, dong thoi giam PRESS_CYCLES (> DEBOUNCE_CYCLES) va
-// HOLD_CYCLES trong testbench nay.
-//
-// Chay: vlog +incdir+../rtl/include ../rtl/gf_arithmetic/*.v ../rtl/rs_encoder/*.v \
-//            ../rtl/rs_decoder/*.v ../rtl/memory/*.v ../rtl/controller/*.v ../rtl/demo/*.v \
-//            ../rtl/board/*.v tb_top.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

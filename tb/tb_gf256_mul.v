@@ -1,15 +1,3 @@
-// tb_gf256_mul.v
-// Testbench cho rtl/gf_arithmetic/gf256_mul.v (README muc 10: "tb_gf256_mul").
-//
-// Noi dung:
-//   1. Tu kiem tra bang log/exp: alpha co bac dung 255 (bang exp khong lap).
-//   2. Doi chieu day du 256 x 256 = 65536 cap voi mo hinh log/exp
-//      (doc lap voi phep dich-va-cong cua RTL).
-//   3. Tinh chat dai so: giao hoan, ket hop, phan phoi tren XOR, 0 va 1.
-//   4. Vi du co dinh: 02*80 = 1D (rut gon theo 0x11D), 02*8E = 01.
-//   5. Phep nhan phai la phep nhan GF, khong phai a*b nguyen (10*10 = 1D).
-//
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/gf256_mul.v tb_gf256_mul.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

@@ -1,25 +1,3 @@
-// tb_rs_encoder.v
-// Testbench cho rtl/rs_encoder/rs_encoder.v  (RS(15,11) tren GF(256))
-//
-// Hop dong kiem tra (header rs_encoder.v, README muc 3):
-//   - start: xung 1 chu ky, nhan khi IDLE; start luc busy bi bo qua.
-//   - Dau vao nhan khi in_valid && in_ready, dung K symbol/khoi; in_ready chi khi busy.
-//   - Dau ra: K byte du lieu (systematic) roi R byte parity, out_last o symbol thu N,
-//     data_out giu on dinh khi out_valid=1, out_ready=0.
-//   - done: xung 1 chu ky sau symbol cuoi; busy ha xuong sau do.
-//
-// Noi dung test:
-//   1. Trang thai sau reset.
-//   2. Vi du co dinh trong docs: 00..0A -> parity C0 8F 28 6C.
-//   3. Cac khoi dac biet: toan 0, toan FF, xung don vi tai tung vi tri (K khoi).
-//   4. 150 khoi ngau nhien, to hop (khoang nghi dau vao) x (back-pressure dau ra).
-//   5. Tu ma sinh ra co syndrome = 0.
-//   6. in_valid khi chua start khong duoc nhan; start luc busy bi bo qua.
-//   7. Reset giua khoi roi ma hoa khoi moi dung (thanh ghi parity da xoa).
-//   8. Hai khoi lien tiep (start ngay sau done).
-//
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v \
-//            ../rtl/rs_encoder/rs_encoder.v tb_rs_encoder.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

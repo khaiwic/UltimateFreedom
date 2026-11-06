@@ -27,8 +27,6 @@
 //   6. Lambda ngau nhien L = 1..T: so voi mo hinh, fail = (count != L).
 //   7. Reset giua phep tinh; chay lien tiep.
 //
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v \
-//            ../rtl/rs_decoder/chien_search.v tb_chien_search.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 

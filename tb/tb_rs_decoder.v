@@ -1,38 +1,3 @@
-// tb_rs_decoder.v
-// Testbench cho rtl/rs_decoder/rs_decoder.v  -- bo giai ma RS(15,11) hoan chinh, T = 2.
-//
-// *** GIAO DIEN GIA DINH (file RTL hien con trong). Sua phan noi cong `dut` neu khac. ***
-//
-//   module rs_decoder (
-//     input  clk, rst_n,
-//     input  start,                // xung 1 chu ky, nhan khi busy = 0
-//     input  [7:0] data_in,        // y[0] truoc; nhan N symbol khi in_valid && in_ready
-//     input  in_valid,
-//     output in_ready,             // chi = 1 khi busy (pha nhan)
-//     output [7:0] data_out,       // xuat N symbol cua TU MA DA SUA (K du lieu + R parity)
-//     output out_valid,
-//     input  out_ready,            // giu data_out on dinh khi out_valid=1, out_ready=0
-//     output out_last,             // = 1 o symbol thu N
-//     output busy,
-//     output done,                 // xung 1 chu ky sau khi symbol cuoi duoc nhan o dau ra
-//     output fail                  // hop le tai done, giu den start ke tiep
-//   );
-//   Khi fail = 1 decoder van xuat du N symbol (khong duoc xem la du lieu da sua);
-//   testbench chi doi hoi so luong symbol va out_last trong truong hop do.
-//
-// Noi dung test (README muc 10, docs/rs_algorithm.md muc 14):
-//   1. Khong loi (ke ca du lieu toan 0); vi du docs: 55 .. CA (loi vi tri 0 va 14).
-//   2. Mot loi tai MOI vi tri 0..N-1 (du lieu va parity) x nhieu gia tri.
-//   3. Hai loi tai MOI cap vi tri, gom ca truong hop S[0] = 0 (2 gia tri loi bang nhau).
-//   4. Loi dau/cuoi khoi, chi trong parity, nhieu bit sai trong 1 symbol.
-//   5. Vuot gioi han (3, 4 loi): ghi nhan bao fail hay giai ma nham; neu fail = 0 thi dau ra
-//      phai la tu ma hop le (syndrome = 0). Khong yeu cau moi mau deu fail.
-//   6. Dau vao co khoang nghi, dau ra bi chan (back-pressure).
-//   7. Reset giua khoi (luc nhan, luc xu ly, luc dau ra bi chan) roi giai ma khoi moi dung.
-//   8. Hai khoi lien tiep; in_ready = 0 khi nghi; done 1 chu ky; out_last dung vi tri.
-//
-// Chay: vlog +incdir+../rtl/include +incdir+../tb ../rtl/gf_arithmetic/*.v ../rtl/rs_decoder/*.v \
-//            tb_rs_decoder.v
 `timescale 1ns/1ps
 `include "rs_params.vh"
 
