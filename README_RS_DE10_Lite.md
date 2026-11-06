@@ -55,7 +55,8 @@ Tài liệu thiết kế và đặc tả kỹ thuật cho bài tập lớn tri�
 | `hex_decoder.v` | Giải mã 4-bit nibble sang mẫu LED 7 đoạn (tích cực thấp, DP tắt) | `rtl/board/` | **Hoàn thành** |
 | `display_control.v` | Chọn byte cần xem, chốt LEDR (Busy, Done, Fail) và điều khiển HEX1:HEX0 | `rtl/board/` | **Hoàn thành** |
 | `input_control.v` | Lọc dội phím (debounce) và đồng bộ Switch/Button | `rtl/board/` | **Hoàn thành** |
-| `top_de10_lite.v` | Module Top-Level kết nối ngoại vi board, controller và lõi RS | `rtl/board/` | **Đang tích hợp** |
+| `rs_controller.v` | Bộ điều phối toàn bộ chuỗi giao dịch demo và pipeline mã hóa/giải mã | `rtl/controller/` | **Hoàn thành** |
+| `top_de10_lite.v` | Module Top-Level kết nối ngoại vi board DE10-Lite, controller và lõi RS | `rtl/board/` | **Hoàn thành** |
 
 ---
 

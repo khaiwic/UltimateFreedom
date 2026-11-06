@@ -39,8 +39,8 @@ module display_control (
     // ------------------------------------------------------------------------
     // 1. Chot trang thai LEDR
     // ------------------------------------------------------------------------
-    reg done_latched;
-    reg fail_latched;
+    reg done_latched = 1'b0;
+    reg fail_latched = 1'b0;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

@@ -16,7 +16,7 @@ module reset_sync #(
 );
 
     (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS" *)
-    reg [STAGES-1:0] sync_chain;
+    reg [STAGES-1:0] sync_chain = {STAGES{1'b0}};
 
     always @(posedge clk or negedge key_rst_n) begin
         if (!key_rst_n)
