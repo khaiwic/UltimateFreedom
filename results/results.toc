@@ -1,0 +1,45 @@
+\babel@toc {vietnamese}{}\relax 
+\contentsline {chapter}{Lời nói đầu và Tổng quan Báo cáo}{i}{chapter*.1}%
+\contentsline {chapter}{\numberline {1}Tổng quan về Thuật toán Reed--Solomon, Mã hóa và Giải mã}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Tổng quan về mã kiểm soát lỗi Reed-Solomon}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Cơ sở toán học trường hữu hạn $\text {GF}(256)$}{1}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Xây dựng trường $\text {GF}(2^8)$, đa thức bất khả quy và phần tử nguyên thủy}{1}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Biểu diễn phần tử theo cơ sở đa thức và dạng lũy thừa}{2}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}Chi tiết toán học và thuật toán các phép toán trên $\text {GF}(256)$}{2}{subsection.1.2.3}%
+\contentsline {subsubsection}{\numberline {1.2.3.1}Phép cộng và phép trừ}{2}{subsubsection.1.2.3.1}%
+\contentsline {subsubsection}{\numberline {1.2.3.2}Phép nhân (\texttt {xtime} và thuật toán dịch--XOR 8 bước)}{3}{subsubsection.1.2.3.2}%
+\contentsline {subsubsection}{\numberline {1.2.3.3}Lũy thừa, Nghịch đảo nhân và Phép chia}{4}{subsubsection.1.2.3.3}%
+\contentsline {section}{\numberline {1.3}Đặc tả tham số và Thuật toán Mã hóa $\text {RS}(15,11)$}{4}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Bảng tham số chuẩn và các phương trình liên hệ}{4}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Cơ sở toán học của phép rút ngắn mã ($\text {RS}(255,251) \to \text {RS}(15,11)$)}{5}{subsection.1.3.2}%
+\contentsline {subsection}{\numberline {1.3.3}Xây dựng chi tiết đa thức sinh $g(x)$}{5}{subsection.1.3.3}%
+\contentsline {subsection}{\numberline {1.3.4}Quy ước thứ tự hệ số đa thức và Mã hóa Systematic}{5}{subsection.1.3.4}%
+\contentsline {subsection}{\numberline {1.3.5}Bộ mã hóa LFSR 4 tầng và ví dụ trên vector \texttt {vectors/no\_error/}}{6}{subsection.1.3.5}%
+\contentsline {section}{\numberline {1.4}Giải thuật Giải mã Reed--Solomon 5 giai đoạn}{7}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}Lưu đồ tổng quát quá trình giải mã}{7}{subsection.1.4.1}%
+\contentsline {subsection}{\numberline {1.4.2}Giai đoạn 1: Tính toán Syndrome và cơ chế rẽ nhánh nhanh}{7}{subsection.1.4.2}%
+\contentsline {subsection}{\numberline {1.4.3}Giai đoạn 2: Thuật toán Berlekamp--Massey (BM)}{7}{subsection.1.4.3}%
+\contentsline {subsection}{\numberline {1.4.4}Giai đoạn 3: Tính đa thức đánh giá lỗi $\Omega (z)$}{9}{subsection.1.4.4}%
+\contentsline {subsection}{\numberline {1.4.5}Giai đoạn 4: Thuật toán Tìm kiếm Chien (Chien Search)}{9}{subsection.1.4.5}%
+\contentsline {subsection}{\numberline {1.4.6}Giai đoạn 5: Công thức Forney, Sửa lỗi và Kiểm tra lại (Re-verify)}{9}{subsection.1.4.6}%
+\contentsline {subsection}{\numberline {1.4.7}Ví dụ giải mã tính toán từng bước}{9}{subsection.1.4.7}%
+\contentsline {section}{\numberline {1.5}Kiểm chứng Giải thuật bằng Golden Model Python và Bộ Test Vectors}{9}{section.1.5}%
+\contentsline {subsection}{\numberline {1.5.1}Kiến trúc mô hình tham chiếu Python trong thư mục \texttt {model/}}{9}{subsection.1.5.1}%
+\contentsline {subsection}{\numberline {1.5.2}Phân tích 5 kịch bản kiểm chứng trong thư mục \texttt {vectors/}}{12}{subsection.1.5.2}%
+\contentsline {chapter}{\numberline {2}Giới thiệu về Board FPGA Terasic DE10-Lite}{14}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Tổng quan kiến trúc Kit Terasic DE10-Lite}{14}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Đặc tính kỹ thuật vi mạch FPGA Intel MAX 10 (\texttt {10M50DAF484C7G})}{14}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Hệ thống ngoại vi giao tiếp trên DE10-Lite}{15}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Quy hoạch gán chân tín hiệu (Pin Assignment) và Ràng buộc thời gian}{16}{section.2.4}%
+\contentsline {chapter}{\numberline {3}Thực hiện Reed-Solomon trên FPGA}{18}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Kiến trúc tổng thể hệ thống trên FPGA}{18}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Giao thức luồng (\textit {Valid/Ready}), bộ đệm \texttt {data\_buffer} và điều phối \texttt {rs\_controller}}{18}{subsection.3.1.1}%
+\contentsline {section}{\numberline {3.2}Thiết kế RTL khối Số học $\text {GF}(256)$ và Bộ mã hóa (\texttt {rs\_encoder})}{19}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Thiết kế RTL Bộ giải mã (\texttt {rs\_decoder}) và 6 Module thành phần}{20}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Thiết kế các khối phụ trợ Demo và Giao tiếp ngoại vi}{21}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Kiểm thử mô phỏng (Testbench), Tổng hợp Quartus \& Thực nghiệm phần cứng}{23}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Kiểm thử mô phỏng tự động qua 10 Testbench và Phân tích dạng sóng}{23}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Kết quả tổng hợp Quartus Prime 25.1std.0 và Phân tích thời gian tĩnh}{24}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Quy trình nạp cấu hình và Thực nghiệm phần cứng trên DE10-Lite}{25}{subsection.3.5.3}%
+\contentsline {chapter}{Kết luận và Hướng phát triển}{26}{section*.6}%
+\contentsline {chapter}{Tài liệu tham khảo}{27}{section*.7}%

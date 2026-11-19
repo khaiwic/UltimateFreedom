@@ -1,238 +1,231 @@
-// rs_controller.v
-// Bo dieu phoi chinh (Master Controller) cho he thong Reed-Solomon tren DE10-Lite.
-//
-// Dac ta theo:
-//   - README_RS_DE10_Lite.md (muc 1, 2, 3, 4, 6)
-//   - docs/architecture.md, docs/interfaces.md
-//
-// Chuc nang:
-//   1. Pha nhap (SW[8] = 0):
-//      - Nhan K=11 symbol tu SW[7:0] qua nut nhan KEY[1] (confirm_pulse).
-//      - Ghi tung symbol vao bo dem u_buf_input tai dia chi in_cnt (0..10).
-//      - Xuat byte dang chon tren SW[7:0] ra byte_to_display de hien thi tren HEX1:HEX0.
-//      - Giu LEDR[2:0] = 3'b000 (clear_status = 1).
-//   2. Pha chay & xem ket qua (SW[8] = 1):
-//      - Khi nhan confirm_pulse tu KEY[1]:
-//          + Xoa co status cu tren display_control (clear_status_pulse).
-//          + Phat xung start dong thoi cho: u_buf_input, rs_encoder, error_injector, rs_decoder.
-//          + Assert busy = 1 (LEDR[0] sang).
-//          + Toan bo chuoi pipeline tu dong stream:
-//              buf_input (11B) -> rs_encoder -> error_injector (15B) -> rs_decoder (15B) -> buf_output (15B).
-//          + Khi rs_decoder.done phat xung:
-//              * Phat xung done = 1 de display_control chot sang LEDR[1].
-//              * Chot co fail tu decoder sang LEDR[2].
-//              * Ha busy = 0 de tat LEDR[0].
-//      - Sau khi chay xong:
-//          + Nguoi dung co the su dung cac switch SW[3:0] de xem 15 byte ket qua trong buf_output tren HEX1:HEX0.
-
+// Bo dieu khien trung tam cho he thong Reed-Solomon RS(5,3) tren GF(8)
+// - Che do nhap thong tin (SW[9]=0): nhap 3 symbol qua SW[2:0] + KEY[1], ma hoa va giai ma dung
+// - Che do nhap loi (SW[9]=1): nhap toi da 3 loi vao 3 symbol cuoi cua tu ma
+// - LEDR[9:0]: sang 1 LED theo SW[2:0] khi nhap; giai ma loi dung -> tat het, sai -> nhap nhay
 `include "rs_params.vh"
 
-module rs_controller #(
-    parameter integer K = `RS_K,      // 11
-    parameter integer N = `RS_N       // 15
-) (
+module rs_controller (
     input  wire        clk,
     input  wire        rst_n,
 
-    // Giao dien tu input_control
     input  wire        confirm_pulse,
-    input  wire [9:0]  sw_sync,
-    input  wire [9:0]  sw_latched,
+    input  wire  [9:0] sw_sync,
+    input  wire  [9:0] sw_latched,
+    input  wire        blink_state,
 
-    // Dieu khien bo dem nhap (data_buffer input)
-    output reg         buf_in_wr_en,
-    output reg  [3:0]  buf_in_wr_addr,
-    output reg  [7:0]  buf_in_wr_data,
-    output reg         buf_in_clear,
-    output reg         buf_in_stream_start,
-    input  wire        buf_in_stream_done,
-
-    // Dieu khien bo ma hoa (rs_encoder)
+    // Giao tiep rs_encoder
     output reg         encoder_start,
-    input  wire        encoder_busy,
+    output reg   [8:0] enc_data_in,
     input  wire        encoder_done,
+    input  wire [14:0] enc_code_out,
 
-    // Dieu khien bo tao loi (error_injector)
-    output reg         injector_start,
-    output wire        injector_enable,
-    input  wire        injector_busy,
-    input  wire        injector_done,
-
-    // Dieu khien bo giai ma (rs_decoder)
+    // Giao tiep rs_decoder
     output reg         decoder_start,
-    input  wire        decoder_busy,
     input  wire        decoder_done,
     input  wire        decoder_fail,
+    input  wire [14:0] dec_corr_out,
 
-    // Dieu khien bo dem xuat (data_buffer output)
-    output reg         buf_out_clear,
+    // Dieu khien error_injector
+    output reg         err_enable,
+    output reg   [8:0] err_syms,
 
-    // Dieu khien kiem tra ket qua & dem chu ky
-    output reg         checker_start,
-    output reg         counter_start,
-    output reg         counter_stop,
-    output reg         counter_clear,
-
-    // Giao dien sang display_control
-    output wire        clear_status,
-    output reg         busy = 1'b0,
-    output reg         done = 1'b0,
-    output reg         fail = 1'b0,
-    output reg  [7:0]  byte_to_display,
-
-    // Du lieu doc tu cac bo dem phuc vu hien thi tren HEX
-    input  wire [7:0]  buf_in_rd_data,
-    input  wire [7:0]  buf_out_rd_data,
-    output wire [3:0]  buf_in_rd_addr,
-    output wire [3:0]  buf_out_rd_addr
+    // Trang thai & hien thi ra 3 LED 7 doan + 10 LED don
+    output reg         busy,
+    output reg         fail,
+    output reg   [2:0] sym0_disp,
+    output reg   [2:0] sym1_disp,
+    output reg   [2:0] sym2_disp,
+    output reg   [9:0] led_out
 );
+    localparam [1:0] S_IDLE = 2'd0, S_ENC = 2'd1, S_DEC = 2'd2;
 
-    localparam integer CNT_W = $clog2(K + 1);
+    reg  [1:0] state;
+    reg  [1:0] in_cnt, err_cnt;
+    reg        info_ready, err_done, sw9_prev;
+    reg [14:0] out_buf;
 
-    localparam [1:0]
-        S_IDLE  = 2'd0,   // Cho thao tac nguoi dung
-        S_START = 2'd1,   // Phat xung start cho cac khoi (1 chu ky)
-        S_RUN   = 2'd2,   // Dang chay pipeline (busy = 1)
-        S_DONE  = 2'd3;   // Xong, phat xung done 1 chu ky roi quay ve S_IDLE
-
-    reg [1:0]       state = S_IDLE;
-    reg [CNT_W-1:0] in_cnt = {CNT_W{1'b0}};
-    reg             has_run = 1'b0;
-    reg             clear_status_pulse = 1'b0;
-    reg             sw8_prev = 1'b0;
-
-    assign injector_enable = sw_sync[9];
-
-    // Clear status giu LEDR = 000 trong pha nhap, hoac phat xung khi bat dau luot chay moi
-    assign clear_status = (sw_sync[8] == 1'b0) || clear_status_pulse;
-
-    assign buf_in_rd_addr  = (sw_sync[3:0] < K) ? sw_sync[3:0] : 4'd0;
-    assign buf_out_rd_addr = (sw_sync[3:0] < N) ? sw_sync[3:0] : 4'd0;
-
-    // Hien thi tren HEX1:HEX0
+    // Chon 3 symbol hien thi ra HEX2, HEX1, HEX0
     always @(*) begin
-        if (sw_sync[8] == 1'b0) begin
-            // Pha nhap: hien thi truc tiep byte nguoi dung dang chon tren SW[7:0]
-            byte_to_display = sw_sync[7:0];
+        if (info_ready) begin
+            sym0_disp = out_buf[2:0];
+            sym1_disp = out_buf[5:3];
+            sym2_disp = out_buf[8:6];
+        end else if (state != S_IDLE) begin
+            sym0_disp = enc_data_in[2:0];
+            sym1_disp = enc_data_in[5:3];
+            sym2_disp = enc_data_in[8:6];
         end else begin
-            // Pha chay & xem ket qua
-            if (has_run)
-                byte_to_display = buf_out_rd_data;
-            else
-                byte_to_display = buf_in_rd_data;
-        end
-    end
-
-    // FSM dieu phoi giao dich
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state               <= S_IDLE;
-            in_cnt              <= {CNT_W{1'b0}};
-            has_run             <= 1'b0;
-            sw8_prev            <= 1'b0;
-            buf_in_wr_en        <= 1'b0;
-            buf_in_wr_addr      <= 4'd0;
-            buf_in_wr_data      <= 8'h00;
-            buf_in_clear        <= 1'b0;
-            buf_in_stream_start <= 1'b0;
-            encoder_start       <= 1'b0;
-            injector_start      <= 1'b0;
-            decoder_start       <= 1'b0;
-            buf_out_clear       <= 1'b0;
-            checker_start       <= 1'b0;
-            counter_start       <= 1'b0;
-            counter_stop        <= 1'b0;
-            counter_clear       <= 1'b0;
-            clear_status_pulse  <= 1'b0;
-            busy                <= 1'b0;
-            done                <= 1'b0;
-            fail                <= 1'b0;
-        end else begin
-            sw8_prev <= sw_sync[8];
-
-            // Mac dinh cac xung dieu khien chi keo dai 1 chu ky
-            buf_in_wr_en        <= 1'b0;
-            buf_in_clear        <= 1'b0;
-            buf_in_stream_start <= 1'b0;
-            encoder_start       <= 1'b0;
-            injector_start      <= 1'b0;
-            decoder_start       <= 1'b0;
-            buf_out_clear       <= 1'b0;
-            checker_start       <= 1'b0;
-            counter_start       <= 1'b0;
-            counter_stop        <= 1'b0;
-            counter_clear       <= 1'b0;
-            clear_status_pulse  <= 1'b0;
-            done                <= 1'b0;
-
-            // Phat hien chuyen tu pha chay sang pha nhap: reset con tro nhap
-            if (sw8_prev && !sw_sync[8]) begin
-                in_cnt  <= {CNT_W{1'b0}};
-                has_run <= 1'b0;
-            end
-
-            case (state)
-                S_IDLE: begin
-                    busy <= 1'b0;
-
-                    if (sw_sync[8] == 1'b0) begin
-                        // Pha nhap: nhan confirm_pulse de ghi 1 byte vao input buffer
-                        if (confirm_pulse) begin
-                            buf_in_wr_en   <= 1'b1;
-                            buf_in_wr_addr <= in_cnt[3:0];
-                            buf_in_wr_data <= sw_latched[7:0];
-
-                            if (in_cnt < K - 1)
-                                in_cnt <= in_cnt + 1'b1;
-                            else
-                                in_cnt <= {CNT_W{1'b0}};
-                        end
-                    end else begin
-                        // Pha chay: nhan confirm_pulse de bat dau xu ly
-                        if (confirm_pulse) begin
-                            busy               <= 1'b1;
-                            clear_status_pulse <= 1'b1;
-                            state              <= S_START;
-                        end
-                    end
+            case (in_cnt)
+                2'd0: begin
+                    sym0_disp = sw_sync[2:0];
+                    sym1_disp = 3'd0;
+                    sym2_disp = 3'd0;
                 end
-
-                S_START: begin
-                    busy                <= 1'b1;
-                    buf_out_clear       <= 1'b1;
-                    counter_clear       <= 1'b1;
-                    counter_start       <= 1'b1;
-                    encoder_start       <= 1'b1;
-                    injector_start      <= 1'b1;
-                    decoder_start       <= 1'b1;
-                    buf_in_stream_start <= 1'b1;
-                    state               <= S_RUN;
+                2'd1: begin
+                    sym0_disp = enc_data_in[2:0];
+                    sym1_disp = sw_sync[2:0];
+                    sym2_disp = 3'd0;
                 end
-
-                S_RUN: begin
-                    busy <= 1'b1;
-
-                    if (decoder_done) begin
-                        busy          <= 1'b0;
-                        done          <= 1'b1;
-                        fail          <= decoder_fail;
-                        counter_stop  <= 1'b1;
-                        checker_start <= 1'b1;
-                        has_run       <= 1'b1;
-                        state         <= S_DONE;
-                    end
+                2'd2: begin
+                    sym0_disp = enc_data_in[2:0];
+                    sym1_disp = enc_data_in[5:3];
+                    sym2_disp = sw_sync[2:0];
                 end
-
-                S_DONE: begin
-                    busy  <= 1'b0;
-                    state <= S_IDLE;
-                end
-
                 default: begin
-                    state <= S_IDLE;
+                    sym0_disp = enc_data_in[2:0];
+                    sym1_disp = enc_data_in[5:3];
+                    sym2_disp = enc_data_in[8:6];
                 end
             endcase
         end
     end
 
+    // Dieu khien 10 LED don LEDR[9:0]
+    always @(*) begin
+        if (sw_sync[9] && err_done) begin
+            if (fail)
+                led_out = blink_state ? 10'h3FF : 10'h000;
+            else
+                led_out = 10'h000;
+        end else begin
+            led_out = (10'd1 << sw_sync[2:0]);
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state         <= S_IDLE;
+            in_cnt        <= 2'd0;
+            err_cnt       <= 2'd0;
+            info_ready    <= 1'b0;
+            err_done      <= 1'b0;
+            sw9_prev      <= 1'b0;
+            enc_data_in   <= 9'd0;
+            out_buf       <= 15'd0;
+            err_enable    <= 1'b0;
+            err_syms      <= 9'd0;
+            encoder_start <= 1'b0;
+            decoder_start <= 1'b0;
+            busy          <= 1'b0;
+            fail          <= 1'b0;
+        end else begin
+            sw9_prev      <= sw_sync[9];
+            encoder_start <= 1'b0;
+            decoder_start <= 1'b0;
+
+            case (state)
+                S_IDLE: begin
+                    busy <= 1'b0;
+
+                    if (!sw9_prev && sw_sync[9]) begin
+                        // Chuyen sang che do nhap loi (SW[9]: 0 -> 1)
+                        err_cnt    <= 2'd0;
+                        err_syms   <= 9'd0;
+                        err_done   <= 1'b0;
+                        err_enable <= 1'b0;
+                        fail       <= 1'b0;
+                        if (info_ready)
+                            out_buf <= enc_code_out;
+                    end else if (sw9_prev && !sw_sync[9]) begin
+                        // Quay ve che do nhap thong tin moi (SW[9]: 1 -> 0)
+                        in_cnt      <= 2'd0;
+                        err_cnt     <= 2'd0;
+                        info_ready  <= 1'b0;
+                        err_done    <= 1'b0;
+                        err_enable  <= 1'b0;
+                        err_syms    <= 9'd0;
+                        fail        <= 1'b0;
+                        enc_data_in <= 9'd0;
+                        out_buf     <= 15'd0;
+                    end else if (confirm_pulse) begin
+                        if (sw_sync[9] == 1'b0) begin
+                            // Che do 0: nhap 3 symbol thong tin
+                            if (info_ready) begin
+                                info_ready       <= 1'b0;
+                                fail             <= 1'b0;
+                                enc_data_in[2:0] <= sw_latched[2:0];
+                                enc_data_in[8:3] <= 6'd0;
+                                in_cnt           <= 2'd1;
+                            end else begin
+                                case (in_cnt)
+                                    2'd0: begin
+                                        enc_data_in[2:0] <= sw_latched[2:0];
+                                        in_cnt           <= 2'd1;
+                                    end
+                                    2'd1: begin
+                                        enc_data_in[5:3] <= sw_latched[2:0];
+                                        in_cnt           <= 2'd2;
+                                    end
+                                    2'd2: begin
+                                        enc_data_in[8:6] <= sw_latched[2:0];
+                                        in_cnt           <= 2'd0;
+                                        err_enable       <= 1'b0;
+                                        busy             <= 1'b1;
+                                        fail             <= 1'b0;
+                                        encoder_start    <= 1'b1;
+                                        state            <= S_ENC;
+                                    end
+                                    default: in_cnt <= 2'd0;
+                                endcase
+                            end
+                        end else if (info_ready) begin
+                            // Che do 1: nhap toi da 3 loi vao 3 symbol cuoi cua tu ma
+                            if (err_done) begin
+                                err_done   <= 1'b0;
+                                err_cnt    <= 2'd0;
+                                err_syms   <= 9'd0;
+                                err_enable <= 1'b0;
+                                fail       <= 1'b0;
+                                out_buf    <= enc_code_out;
+                            end else begin
+                                case (err_cnt)
+                                    2'd0: err_syms[8:6] <= sw_latched[2:0]; // Symbol cuoi (sym 4)
+                                    2'd1: err_syms[5:3] <= sw_latched[2:0]; // Symbol ke cuoi (sym 3)
+                                    2'd2: err_syms[2:0] <= sw_latched[2:0]; // Symbol thu 3 tu cuoi (sym 2)
+                                    default: ;
+                                endcase
+
+                                if (err_cnt == 2'd2 || sw_sync[8] == 1'b1) begin
+                                    err_cnt       <= 2'd0;
+                                    err_enable    <= 1'b1;
+                                    busy          <= 1'b1;
+                                    fail          <= 1'b0;
+                                    decoder_start <= 1'b1;
+                                    state         <= S_DEC;
+                                end else begin
+                                    err_cnt <= err_cnt + 2'd1;
+                                end
+                            end
+                        end
+                    end
+                end
+
+                S_ENC: begin
+                    busy <= 1'b1;
+                    if (encoder_done) begin
+                        decoder_start <= 1'b1;
+                        state         <= S_DEC;
+                    end
+                end
+
+                S_DEC: begin
+                    busy <= 1'b1;
+                    if (decoder_done) begin
+                        out_buf <= dec_corr_out;
+                        busy    <= 1'b0;
+                        if (!err_enable) begin
+                            info_ready <= 1'b1;
+                            fail       <= decoder_fail;
+                        end else begin
+                            err_done <= 1'b1;
+                            fail     <= decoder_fail || (dec_corr_out != enc_code_out);
+                        end
+                        state <= S_IDLE;
+                    end
+                end
+
+                default: state <= S_IDLE;
+            endcase
+        end
+    end
 endmodule

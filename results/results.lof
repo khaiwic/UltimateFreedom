@@ -1,0 +1,10 @@
+\babel@toc {vietnamese}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Sơ đồ khối bộ mã hóa systematic LFSR 4 tầng với hệ số $[\texttt {0x40}, \texttt {0x78}, \texttt {0x36}, \texttt {0x0F}]$}}{6}{figure.1.1}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Lưu đồ giải thuật giải mã Reed--Solomon $\text {RS}(15,11)$ năm giai đoạn kèm Fast-path và Re-verify.}}{8}{figure.1.2}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Tế bào phần cứng đánh giá Horner cho mỗi syndrome $S_j$ ($j \in \{0,1,2,3\}$).}}{8}{figure.1.3}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Sơ đồ khối kết nối ngoại vi trên board Terasic DE10-Lite cho hệ thống $\text {RS}(15,11)$}}{14}{figure.2.1}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Sơ đồ khối kiến trúc tổng thể hệ thống \texttt {top\_de10\_lite} trên FPGA}}{18}{figure.3.1}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Lưu đồ máy trạng thái 12 trạng thái và hai luồng xử lý của \texttt {rs\_decoder}}}{20}{figure.3.2}%

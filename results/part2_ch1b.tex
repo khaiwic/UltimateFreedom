@@ -1,0 +1,477 @@
+\section{Giải thuật Giải mã Reed-Solomon 5 giai đoạn}
+
+Trong cấu hình chuẩn tại \texttt{rtl/include/rs\_params.vh}, bộ giải mã $\text{RS}(15,11)$ thao tác trên trường $\text{GF}(2^8)$ với đa thức trường $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ (\texttt{9'h11D}) và phần tử nguyên thủy $\alpha = \texttt{0x02}$. Mỗi khối nhận $y = [y_0, \dots, y_{14}]$ gồm $N = 15$ symbol 8 bit ($K = 11$ symbol dữ liệu tại $i \in [0, 10]$ và $R = 4$ symbol parity tại $i \in [11, 14]$), rút ngắn từ mã cha $\text{RS}(255,251)$ bằng cách bỏ $240$ symbol \texttt{0x00} đầu khối. Với $F = 0$, bước số mũ bằng $1$ và khoảng cách tối thiểu $d_{\min} = 5$, bộ giải mã khôi phục bảo đảm tối đa $T = \lfloor R/2 \rfloor = 2$ lỗi symbol bất kỳ. Theo quy ước dự án, các đa thức truyền $c(x), y(x)$ lưu từ bậc cao đến bậc thấp ($y_0$ ứng với $x^{14}$ truyền trước, $y_{14}$ ứng với $x^0$ truyền sau), còn các đa thức giải mã $S(z), \Lambda(z), \Omega(z)$ lưu từ bậc thấp đến bậc cao (hệ số tự do tại chỉ số $0$).
+
+\subsection{Lưu đồ tổng quát quá trình giải mã}
+
+Hình~\ref{fig:rs_decode_flow} mô tả lưu đồ giải mã 5 giai đoạn. Thiết kế tích hợp hai cơ chế quan trọng: nhánh rẽ nhanh (\textit{Fast-path}) ngay sau Giai đoạn~1 khi $S = 0$ để giảm độ trễ cho khối sạch lỗi, và chuỗi kiểm tra toàn vẹn đa tầng (bậc $\Lambda$, số nghiệm Chien trong miền truyền, mẫu số đạo hàm Forney khác $0$, và tái tính syndrome \textit{Re-verify}) để phát hiện vượt ngưỡng $T = 2$.
+
+\begin{figure}[!htb]
+\centering
+\begin{tikzpicture}[>=stealth]
+    % Main vertical flow (x = 0)
+    \node[draw, rectangle, rounded corners=2pt, fill=blue!6, minimum width=5.4cm, minimum height=0.58cm, align=center, font=\scriptsize] (load) at (0, 0) {\textbf{Nhận khối}: Bộ đệm $N=15$ symbol $y[0..14]$};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.62cm, align=center, font=\scriptsize] (syn) at (0, -0.95) {\textbf{GĐ 1 --- Syndrome}: $S_j = y(\alpha^j)$ (Horner, $j=0..3$)};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -1.55) -- (2.25, -2.10) -- (0, -2.65) -- (-2.25, -2.10) -- cycle;
+    \node[align=center, font=\scriptsize\bfseries] at (0, -2.10) {$S_0 = S_1 =$ \\ $S_2 = S_3 = 0$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=green!10, draw=green!55!black, minimum width=3.4cm, minimum height=0.82cm, align=center, font=\scriptsize] (fast) at (4.75, -2.10) {\textbf{Nhánh Fast-path}:\\Giữ nguyên $y[0..14]$\\(\texttt{err\_cnt=0, fail=0})};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.60cm, align=center, font=\scriptsize] (bm) at (0, -3.28) {\textbf{GĐ 2 --- Berlekamp--Massey}: Tìm $\Lambda(z)$ và bậc $L$};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -3.88) -- (2.30, -4.44) -- (0, -5.00) -- (-2.30, -4.44) -- cycle;
+    \node[align=center, font=\scriptsize] at (0, -4.44) {$L=0$ hay $L>2$\\hay $\deg(\Lambda)\neq L$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.58cm, align=center, font=\scriptsize] (omega) at (0, -5.60) {\textbf{GĐ 3 --- Error Evaluator}: $\Omega(z) = [S(z)\Lambda(z)] \bmod z^4$};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.58cm, align=center, font=\scriptsize] (chien) at (0, -6.50) {\textbf{GĐ 4 --- Chien Search}: Quét $i=0..14$, tìm $\Lambda(z_i)=0$};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -7.10) -- (2.25, -7.62) -- (0, -8.14) -- (-2.25, -7.62) -- cycle;
+    \node[align=center, font=\scriptsize] at (0, -7.62) {Số nghiệm\\tìm được $= L$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.62cm, align=center, font=\scriptsize] (forney) at (0, -8.78) {\textbf{GĐ 5a --- Forney} ($F=0$): $\Lambda'(z_i)\neq 0$; $E_i = X_i \frac{\Omega(z_i)}{\Lambda'(z_i)}$};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.56cm, align=center, font=\scriptsize] (corr) at (0, -9.66) {\textbf{GĐ 5b --- Error Corrector}: $c'_i = y_i \oplus E_i$};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.58cm, align=center, font=\scriptsize] (rever) at (0, -10.54) {\textbf{GĐ 5c --- Re-verify}: Tính lại $S'_0..S'_3$ trên $c'[0..14]$};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -11.14) -- (2.25, -11.68) -- (0, -12.22) -- (-2.25, -11.68) -- cycle;
+    \node[align=center, font=\scriptsize\bfseries] at (0, -11.68) {$S'_0 = S'_1 =$ \\ $S'_2 = S'_3 = 0$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=green!12, draw=green!55!black, minimum width=5.4cm, minimum height=0.58cm, align=center, font=\scriptsize] (outok) at (0, -12.84) {\textbf{Xuất kết quả}: Từ mã $c'[0..14]$, \texttt{fail = 0}};
+
+    % Fail box on left
+    \node[draw, rectangle, rounded corners=2pt, fill=red!12, draw=red!70!black, minimum width=2.75cm, minimum height=1.10cm, align=center, font=\scriptsize] (failbox) at (-4.65, -7.62) {\textbf{Báo lỗi giải mã}\\\texttt{fail = 1}\\(Từ chối ứng viên)};
+
+    % Vertical connectors
+    \draw[->, thick] (load.south) -- (syn.north);
+    \draw[->, thick] (syn.south) -- (0, -1.55);
+    \draw[->, thick] (0, -2.65) -- node[right, font=\tiny] {Không} (bm.north);
+    \draw[->, thick] (bm.south) -- (0, -3.88);
+    \draw[->, thick] (0, -5.00) -- node[right, font=\tiny] {Không} (omega.north);
+    \draw[->, thick] (omega.south) -- (chien.north);
+    \draw[->, thick] (chien.south) -- (0, -7.10);
+    \draw[->, thick] (0, -8.14) -- node[right, font=\tiny] {Có} (forney.north);
+    \draw[->, thick] (forney.south) -- (corr.north);
+    \draw[->, thick] (corr.south) -- (rever.north);
+    \draw[->, thick] (rever.south) -- (0, -11.14);
+    \draw[->, thick] (0, -12.22) -- node[right, font=\tiny] {Có} (outok.north);
+
+    % Fast-path
+    \draw[->, thick, green!50!black] (2.25, -2.10) -- node[above, font=\tiny] {Có} (fast.west);
+    \draw[->, thick, green!50!black] (fast.south) |- (outok.east);
+
+    % Clean non-overlapping fail lines
+    \draw[->, thick, red!70!black] (-2.30, -4.44) -| node[above, pos=0.25, font=\tiny] {Có} (failbox.north);
+    \draw[->, thick, red!70!black] (-2.25, -7.62) -- node[above, font=\tiny] {Không} (failbox.east);
+    \draw[->, thick, red!70!black] (-2.70, -8.78) -- node[above, font=\tiny] {$\Lambda'(z_i)=0$} (-4.65, -8.78) -- (failbox.south);
+    \draw[thick, red!70!black] (-2.25, -11.68) -- node[above, font=\tiny] {Không} (-4.65, -11.68) -- (-4.65, -8.78);
+\end{tikzpicture}
+\caption{Lưu đồ giải thuật giải mã Reed-Solomon $\text{RS}(15,11)$ năm giai đoạn kèm Fast-path và Re-verify.}
+\label{fig:rs_decode_flow}
+\end{figure}
+
+\subsection{Giai đoạn 1: Tính toán Syndrome và cơ chế rẽ nhánh nhanh}
+
+Vì mọi từ mã hợp lệ $c(x)$ đều chia hết cho $g(x) = \prod_{j=0}^{3}(x + \alpha^{F+j})$ ($F = 0$), việc đánh giá đa thức nhận $y(x) = c(x) \oplus e(x)$ tại các nghiệm $\beta_j = \alpha^j \in \{\texttt{0x01}, \texttt{0x02}, \texttt{0x04}, \texttt{0x08}\}$ loại bỏ hoàn toàn thành phần $c(\alpha^j) = 0$:
+\begin{equation}
+S_j = y(\alpha^{F+j}) = \sum_{i=0}^{N-1} y_i \left(\alpha^j\right)^{N-1-i} = \sum_{i=0}^{N-1} e_i \left(\alpha^j\right)^{N-1-i} = \bigoplus_{k=1}^{\nu} E_k X_k^j, \quad j = 0, 1, 2, 3,
+\label{eq:syndrome_def}
+\end{equation}
+trong đó $\nu$ là số symbol lỗi, $E_k = e_{i_k} \neq 0$ và $X_k = \alpha^{N-1-i_k}$. Đa thức syndrome bậc thấp trước được lập thành $S(z) = S_0 \oplus S_1 z \oplus S_2 z^2 \oplus S_3 z^3$.
+
+\paragraph{Sơ đồ đánh giá Horner:}
+Do byte nhận $y_i$ truyền theo thứ tự $i = 0 \to 14$ từ bậc cao $x^{14}$ xuống $x^0$, $S_j$ được tính trực tiếp bằng phép lặp Horner mà không cần mạch lũy thừa:
+\begin{equation}
+\text{acc}_j^{(-1)} = \texttt{0x00}, \qquad \text{acc}_j^{(i)} = \left(\text{acc}_j^{(i-1)} \odot \alpha^j\right) \oplus y_i, \qquad S_j = \text{acc}_j^{(14)}.
+\label{eq:horner_step}
+\end{equation}
+Trong phần cứng (Hình~\ref{fig:horner_syndrome}), bốn kênh $S_0..S_3$ hoạt động song song theo dòng symbol \texttt{valid \&\& ready}; kênh $S_0$ ($\alpha^0 = \texttt{0x01}$) chỉ là bộ tích lũy XOR, còn $S_1, S_2, S_3$ dùng nhân hằng cố định $\text{GF}(2^8)$.
+
+\begin{figure}[!htb]
+\centering
+\begin{tikzpicture}[>=stealth]
+    \node[font=\footnotesize] (yin) at (-3.5, 0) {$y_i$ ($i=0..14$)};
+    \draw[thick] (-1.75, 0) circle (0.24cm);
+    \draw[thick] (-1.75, -0.24) -- (-1.75, 0.24);
+    \draw[thick] (-1.99, 0) -- (-1.51, 0);
+    \node[draw, rectangle, rounded corners=2pt, fill=blue!8, minimum width=1.6cm, minimum height=0.70cm, align=center, font=\scriptsize] (reg) at (0.3, 0) {Thanh ghi \\ $\text{acc}_j$ (8b)};
+    \node[draw, rectangle, rounded corners=2pt, fill=orange!10, minimum width=1.7cm, minimum height=0.58cm, align=center, font=\scriptsize] (mul) at (0.3, -1.15) {Nhân hằng $\odot\,\alpha^j$};
+    \node[font=\footnotesize] (sout) at (2.9, 0) {$S_j = \text{acc}_j^{(14)}$};
+
+    \draw[->, thick] (yin.east) -- (-1.99, 0);
+    \draw[->, thick] (-1.51, 0) -- (reg.west);
+    \draw[->, thick] (reg.east) -- (sout.west);
+    \fill (1.55, 0) circle (1.5pt);
+    \draw[->, thick] (1.55, 0) |- (mul.east);
+    \draw[->, thick] (mul.west) -| (-1.75, -0.24);
+\end{tikzpicture}
+\caption{Tế bào phần cứng đánh giá Horner cho mỗi syndrome $S_j$ ($j \in \{0,1,2,3\}$).}
+\label{fig:horner_syndrome}
+\end{figure}
+
+\paragraph{Điều kiện Fast-path và tính không đủ của kiểm tra $S_0 = 0$ đơn lẻ:}
+Khi toàn bộ bốn giá trị thỏa mãn $S_0 = S_1 = S_2 = S_3 = 0$, $y(x)$ thuộc tập từ mã hợp lệ; nhánh Fast-path xuất thẳng $y[0..14]$ (\texttt{fail = 0}), tiết kiệm toàn bộ chu trình giải phương trình khóa. Cần nhấn mạnh hai giới hạn toán học: thứ nhất, $S = 0$ không loại trừ khả năng kênh gây ra $\ge d_{\min} = 5$ lỗi đẩy $y(x)$ trùng một từ mã khác; thứ hai, \textbf{tuyệt đối không chỉ kiểm tra $S_0 = 0$}. Vì $F = 0 \implies \beta_0 = \alpha^0 = 1$, ta có:
+\begin{equation}
+S_0 = y(1) = \bigoplus_{i=0}^{14} y_i = \bigoplus_{i=0}^{14} e_i = \bigoplus_{k=1}^{\nu} E_k.
+\end{equation}
+Bất kỳ mẫu lỗi nào có tổng XOR các độ lớn lỗi bằng $0$ đều làm $S_0$ triệt tiêu. Chẳng hạn, hai lỗi cùng biên độ $E_2 = E_9 = \texttt{0x37}$ trên từ mã chuẩn \texttt{00..0A C0 8F 28 6C} tạo syndrome $S = [\texttt{00}, \texttt{23}, \texttt{C6}, \texttt{59}]$: dù $S_0 = \texttt{00}$, các giá trị $S_1, S_2, S_3$ đều khác $0$ và hoàn toàn sửa được.
+
+\subsection{Giai đoạn 2: Thuật toán Berlekamp--Massey (BM)}
+
+Với $\nu \le T$ lỗi tại $X_1, \dots, X_\nu$, định nghĩa đa thức định vị lỗi chuẩn hóa $\Lambda(0) = 1$:
+\begin{equation}
+\Lambda(z) = \prod_{k=1}^{\nu} (1 \oplus X_k z) = 1 \oplus \lambda_1 z \oplus \dots \oplus \lambda_\nu z^\nu.
+\label{eq:lambda_def}
+\end{equation}
+Khai triển chuỗi hình thức $S_\infty(z) = \sum_{j=0}^{\infty} S_j z^j = \bigoplus_{k=1}^{\nu} \frac{E_k}{1 \oplus X_k z}$ rồi nhân hai vế với $\Lambda(z)$ sẽ triệt tiêu mọi mẫu số, tạo thành đa thức $\Omega(z)$ bậc nhỏ hơn $\nu$. Rút gọn modulo $z^R$ thu được \textbf{Phương trình khóa} (\textit{Key Equation}):
+\begin{equation}
+\Lambda(z)\,S(z) \equiv \Omega(z) \pmod{z^R}, \qquad S_n \oplus \bigoplus_{j=1}^{L} \lambda_j S_{n-j} = 0 \quad (L \le n < R).
+\label{eq:key_equation}
+\end{equation}
+
+Thuật toán Berlekamp--Massey duyệt $n = 0 \dots R-1$ ($R=4$, biến \texttt{q} trong \texttt{rs\_reference.py}) để tìm LFSR ngắn nhất sinh chuỗi $S_0..S_3$, sử dụng bộ nhớ kích thước $R+1 = 5$ hệ số (từ $z^0$ đến $z^4$) và các biến trạng thái:
+\begin{itemize}
+    \item $\Lambda^{(n)}(z)$ (mảng \texttt{C}): đa thức định vị hiện hành, khởi tạo $\Lambda^{(0)}(z) = \texttt{0x01}$.
+    \item $B(z)$: đa thức bổ trợ lưu $\Lambda$ ở lần cập nhật bậc gần nhất, khởi tạo $B(z) = \texttt{0x01}$.
+    \item $L$: bậc ước lượng hiện tại ($L = 0$); $m$ (biến \texttt{shift}): số bước dịch kể từ lần cập nhật $L$ gần nhất ($m = 1$); $b$: độ lệch khác $0$ lưu tại lần cập nhật $L$ gần nhất ($b = \texttt{0x01}$).
+\end{itemize}
+Tại vòng lặp $n \in \{0, 1, 2, 3\}$, tính độ lệch (\textit{discrepancy}) $d_n$ và phân nhánh cập nhật:
+\begin{equation}
+d_n = S_n \oplus \bigoplus_{j=1}^{L} \left(\lambda_j^{(n)} \odot S_{n-j}\right).
+\label{eq:bm_discrepancy}
+\end{equation}
+\begin{enumerate}
+    \item \textbf{Nhánh $d_n = 0$:} Đa thức hiện tại thỏa bước $n$. Giữ $\Lambda^{(n+1)}(z) = \Lambda^{(n)}(z)$, $L, B(z), b$ không đổi; tăng $m \leftarrow m + 1$.
+    \item \textbf{Nhánh $d_n \neq 0$ và $2L \le n$:} Phải mở rộng bậc thanh ghi. Lưu bản sao $\Lambda_{\text{prev}}(z) = \Lambda^{(n)}(z)$, tính $\gamma = d_n \oslash b = d_n \odot b^{-1}$, rồi cập nhật:
+    \begin{equation}
+    \Lambda^{(n+1)}(z) = \Lambda^{(n)}(z) \oplus \gamma \cdot z^m B(z), \quad L \leftarrow n + 1 - L, \quad B(z) \leftarrow \Lambda_{\text{prev}}(z), \quad b \leftarrow d_n, \quad m \leftarrow 1.
+    \label{eq:bm_update}
+    \end{equation}
+    \item \textbf{Nhánh $d_n \neq 0$ và $2L > n$:} Cập nhật đa thức $\Lambda^{(n+1)}(z) = \Lambda^{(n)}(z) \oplus (d_n \oslash b) \cdot z^m B(z)$, giữ nguyên $L, B(z), b$ và tăng $m \leftarrow m + 1$.
+\end{enumerate}
+
+Trong phần cứng RTL, việc cập nhật $B(z) \leftarrow \Lambda_{\text{prev}}(z)$ bắt buộc dùng đúng bản sao trước khi $\Lambda^{(n)}(z)$ bị ghi đè. Bộ đệm trung gian phải giữ đủ $R+1=5$ hệ số (không cắt sớm về $T+1=3$) để khi có $>T$ lỗi, $L$ tăng tự nhiên lên $3$ hoặc $4$. Sau vòng $n=3$, nếu $L = 0$ (dù $S \neq 0$), hoặc $L > T = 2$, hoặc $\lambda_L = 0$ ($\deg(\Lambda) \neq L$), bộ giải mã phát hiện vượt ngưỡng và dựng cờ \texttt{fail = 1}.
+
+\subsection{Giai đoạn 3: Tính đa thức đánh giá lỗi $\Omega(z)$}
+
+Từ~\eqref{eq:key_equation}, $\Omega(z)$ thu được bằng phép nhân đa thức cắt bậc modulo $z^R$ (lược bỏ số hạng bậc $\ge R=4$, không phải rút gọn theo $p(u)$):
+\begin{equation}
+\Omega(z) = \left[ S(z)\,\Lambda(z) \right] \bmod z^R, \qquad \omega_q = \bigoplus_{j=0}^{\min(q, L)} \left(\lambda_j \odot S_{q-j}\right), \quad q = 0..3.
+\label{eq:omega_def}
+\end{equation}
+Triển khai cụ thể cho $\text{RS}(15,11)$ ($\lambda_0 = 1$, và $L \le 2 \implies \lambda_3 = 0$):
+\begin{align}
+\Omega_0 &= S_0, &
+\Omega_1 &= S_1 \oplus (\lambda_1 \odot S_0), \label{eq:omega01}\\
+\Omega_2 &= S_2 \oplus (\lambda_1 \odot S_1) \oplus (\lambda_2 \odot S_0), &
+\Omega_3 &= S_3 \oplus (\lambda_1 \odot S_2) \oplus (\lambda_2 \odot S_1). \label{eq:omega23}
+\end{align}
+Từ khai triển $\Lambda(z) S_\infty(z) = \bigoplus_{k=1}^{\nu} E_k \prod_{m \neq k}(1 \oplus X_m z)$, mỗi tích thành phần có bậc $\nu - 1$, suy ra $\deg(\Omega) < L$. Với mẫu lỗi hợp lệ $\nu = L \le 2$, $\Omega_2$ và $\Omega_3$ trong~\eqref{eq:omega23} trùng với phương trình truy hồi~\eqref{eq:key_equation} nên tự động bằng $0$ (và khi $L=1$ thì $\Omega_1 = 0$). Kiểm tra $\Omega_L \dots \Omega_{R-1} = 0$ là điều kiện nhất quán phụ trợ hữu ích, tuy chưa đủ đảm bảo khi vượt $T$ lỗi.
+
+\subsection{Giai đoạn 4: Thuật toán Tìm kiếm Chien (Chien Search)}
+
+Với cấu hình rút ngắn $\text{RS}(255,251) \to \text{RS}(15,11)$, mỗi chỉ số truyền $i \in [0, 14]$ ứng với chỉ số mã cha $j = 240 + i$, bảo toàn số mũ $254 - j = 14 - i = N - 1 - i$. Vì vậy vị trí lỗi $X_i$ và điểm thử $z_i = X_i^{-1}$ tính theo modulo $255$ là:
+\begin{equation}
+X_i = \alpha^{N-1-i} = \alpha^{14-i}, \qquad z_i = X_i^{-1} = \alpha^{255-(14-i)} = \alpha^{241+i}, \quad i = 0..14.
+\label{eq:chien_mapping}
+\end{equation}
+Hai mốc chuẩn tại hai đầu từ mã là $i=0 \mapsto (X_0=\texttt{0x13}, z_0=\texttt{0x58})$ và $i=14 \mapsto (X_{14}=\texttt{0x01}, z_{14}=\texttt{0x01})$. Thuật toán Chien quét lần lượt $i = 0 \dots 14$ và kiểm tra điều kiện nghiệm:
+\begin{equation}
+\Lambda(z_i) = 1 \oplus (\lambda_1 \odot z_i) \oplus (\lambda_2 \odot z_i^2) = 0.
+\end{equation}
+Ngoài cách tính lũy thừa trực tiếp hoặc Horner theo từng $i$ (như trong \texttt{chien\_search} của Python), mạch phần cứng có thể dùng bộ nhân lặp dựa trên quan hệ $z_{i+1} = z_i \odot \alpha$: khởi tạo thanh ghi nhánh bậc $k$ bằng $\lambda_k (\alpha^{241})^k$ và nhân thêm $\alpha^k$ mỗi chu kỳ. Bắt buộc kiểm tra số nghiệm phân biệt tìm được trong miền $i \in [0, 14]$ phải **đúng bằng $L$**; mọi nghiệm rơi vào $240$ vị trí bỏ đầu mã cha ($j \in [0, 239]$) đều bị từ chối và kích hoạt cờ \texttt{fail = 1}.
+
+\subsection{Giai đoạn 5: Công thức Forney, Sửa lỗi và Kiểm tra lại (Re-verify)}
+
+Đánh giá $\Omega(z) = \bigoplus_{k=1}^{L} E_k \prod_{m \neq k} (1 \oplus X_m z)$ tại nghiệm $z = z_i = X_i^{-1}$ làm triệt tiêu mọi số hạng $k \neq i$ (vì $1 \oplus X_i z_i = 0$), chỉ còn:
+\begin{equation}
+\Omega(z_i) = E_i \prod_{m \neq i} (1 \oplus X_m z_i).
+\end{equation}
+Đồng thời, đạo hàm hình thức của $\Lambda(z) = \prod_{m=1}^{L}(1 \oplus X_m z)$ tại $z_i$ cho:
+\begin{equation}
+\Lambda'(z) = \bigoplus_{k=1}^{L} X_k \prod_{m \neq k} (1 \oplus X_m z) \implies \Lambda'(z_i) = X_i \prod_{m \neq i} (1 \oplus X_m z_i).
+\end{equation}
+Chia hai biểu thức thu được $\frac{\Omega(z_i)}{\Lambda'(z_i)} = \frac{E_i}{X_i}$. Tổng quát cho nghiệm đầu $F$ bất kỳ (bước số mũ bằng $1$), giá trị lỗi Forney là $E_i = X_i^{1-F} \frac{\Omega(z_i)}{\Lambda'(z_i)}$. Với cấu hình $F = 0$, hệ số $X_i$ bắt buộc phải nhân thêm:
+\begin{equation}
+E_i = X_i \odot \frac{\Omega(z_i)}{\Lambda'(z_i)}.
+\label{eq:forney_f0}
+\end{equation}
+(Kiểm chứng trường hợp 1 lỗi: $\Lambda(z)=1 \oplus X_i z \implies \Lambda'(z)=X_i$, $\Omega(z)=E_i$, nên~\eqref{eq:forney_f0} trả về $X_i \odot (E_i \oslash X_i) = E_i$). Trong đặc số $2$, các số hạng bậc chẵn của $\Lambda'(z)$ triệt tiêu ($2a = 0$):
+\begin{equation}
+\Lambda'(z) = \lambda_1 \oplus \lambda_3 z^2 \oplus \lambda_5 z^4 \oplus \dots \xrightarrow{L \le 2} \Lambda'(z) = \lambda_1.
+\end{equation}
+Bộ giải mã phải kiểm tra $\Lambda'(z_i) \neq 0$ trước khi chia (nếu bằng $0$ thì dựng \texttt{fail = 1}). Sau đó khối sửa lỗi cập nhật từ mã ứng viên bằng phép XOR trên cả dữ liệu và parity: $c'_i = y_i \oplus E_i$ tại các vị trí lỗi $i \in \mathcal{R}$, giữ nguyên các vị trí khác.
+
+Cuối cùng, khối \textbf{Re-verify} tính lại đủ $R = 4$ syndrome $S'_j = c'(\alpha^j)$ trên toàn bộ $N = 15$ symbol ứng viên. Chỉ khi $S'_0 = S'_1 = S'_2 = S'_3 = 0$ mới xuất $c'$ với \texttt{fail = 0}; ngược lại dựng \texttt{fail = 1} và hủy bộ đệm ứng viên. Tuy nhiên, nếu $>T$ lỗi đẩy $y$ vào quả cầu bán kính $T$ quanh một từ mã hợp lệ khác $\tilde{c} \neq c$, $S'$ vẫn bằng $0$ (giải mã nhầm); do đó trên demo phần cứng cần có khối \texttt{result\_checker} đối chiếu với dữ liệu gốc.
+
+\subsection{Ví dụ giải mã tính toán từng bước (Worked Numerical Example)}
+
+Xét kịch bản chuẩn từ \texttt{vectors/two\_errors/} (mục~12 trong \texttt{docs/rs\_algorithm.md}, viết hệ hex):
+\begin{itemize}
+    \item Dữ liệu gốc ($K=11$): \texttt{m = [00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A]}; Parity: \texttt{p = [C0, 8F, 28, 6C]}.
+    \item Tiêm 2 lỗi biên: XOR \texttt{55} tại $i=0$ và XOR \texttt{A6} tại $i=14$ ($\texttt{6C}\oplus\texttt{A6}=\texttt{CA}$), tạo từ mã nhận:
+    \[
+    \texttt{y = [55, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, C0, 8F, 28, CA]}.
+    \]
+\end{itemize}
+
+\paragraph{Bước 1 (Tính Syndrome):} Bảng~\ref{tab:worked_horner} liệt kê vết tích lũy Horner qua $i = 0 \dots 14$, thu được $S = [\texttt{F3}, \texttt{60}, \texttt{0D}, \texttt{24}] \neq 0$.
+
+\begin{table}[!htb]
+\centering
+\caption{Diễn biến tính toán từng bước theo quy tắc Horner cho $S_0..S_3$ trên vector \texttt{two\_errors}.}
+\label{tab:worked_horner}
+\scriptsize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{} c c c c c c @{}}
+\toprule
+$i$ & $y_i$ & $\text{acc}_0$ ($\beta_0=\text{01}$) & $\text{acc}_1$ ($\beta_1=\text{02}$) & $\text{acc}_2$ ($\beta_2=\text{04}$) & $\text{acc}_3$ ($\beta_3=\text{08}$) \\
+\midrule
+0  & \texttt{55} & $\texttt{00} \to \texttt{55}$ & $\texttt{00} \to \texttt{55}$ & $\texttt{00} \to \texttt{55}$ & $\texttt{00} \to \texttt{55}$ \\
+1  & \texttt{01} & $\texttt{55} \to \texttt{54}$ & $\texttt{AA} \to \texttt{AB}$ & $\texttt{49} \to \texttt{48}$ & $\texttt{92} \to \texttt{93}$ \\
+2  & \texttt{02} & $\texttt{54} \to \texttt{56}$ & $\texttt{4B} \to \texttt{49}$ & $\texttt{3D} \to \texttt{3F}$ & $\texttt{EC} \to \texttt{EE}$ \\
+3  & \texttt{03} & $\texttt{56} \to \texttt{55}$ & $\texttt{92} \to \texttt{91}$ & $\texttt{FC} \to \texttt{FF}$ & $\texttt{23} \to \texttt{20}$ \\
+4  & \texttt{04} & $\texttt{55} \to \texttt{51}$ & $\texttt{3F} \to \texttt{3B}$ & $\texttt{DB} \to \texttt{DF}$ & $\texttt{1D} \to \texttt{19}$ \\
+5  & \texttt{05} & $\texttt{51} \to \texttt{54}$ & $\texttt{76} \to \texttt{73}$ & $\texttt{5B} \to \texttt{5E}$ & $\texttt{C8} \to \texttt{CD}$ \\
+6  & \texttt{06} & $\texttt{54} \to \texttt{52}$ & $\texttt{E6} \to \texttt{E0}$ & $\texttt{65} \to \texttt{63}$ & $\texttt{26} \to \texttt{20}$ \\
+7  & \texttt{07} & $\texttt{52} \to \texttt{55}$ & $\texttt{DD} \to \texttt{DA}$ & $\texttt{91} \to \texttt{96}$ & $\texttt{1D} \to \texttt{1A}$ \\
+8  & \texttt{08} & $\texttt{55} \to \texttt{5D}$ & $\texttt{A9} \to \texttt{A1}$ & $\texttt{62} \to \texttt{6A}$ & $\texttt{D0} \to \texttt{D8}$ \\
+9  & \texttt{09} & $\texttt{5D} \to \texttt{54}$ & $\texttt{5F} \to \texttt{56}$ & $\texttt{B5} \to \texttt{BC}$ & $\texttt{8E} \to \texttt{87}$ \\
+10 & \texttt{0A} & $\texttt{54} \to \texttt{5E}$ & $\texttt{AC} \to \texttt{A6}$ & $\texttt{CA} \to \texttt{C0}$ & $\texttt{4C} \to \texttt{46}$ \\
+11 & \texttt{C0} & $\texttt{5E} \to \texttt{9E}$ & $\texttt{51} \to \texttt{91}$ & $\texttt{27} \to \texttt{E7}$ & $\texttt{0A} \to \texttt{CA}$ \\
+12 & \texttt{8F} & $\texttt{9E} \to \texttt{11}$ & $\texttt{3F} \to \texttt{B0}$ & $\texttt{BB} \to \texttt{34}$ & $\texttt{1E} \to \texttt{91}$ \\
+13 & \texttt{28} & $\texttt{11} \to \texttt{39}$ & $\texttt{7D} \to \texttt{55}$ & $\texttt{D0} \to \texttt{F8}$ & $\texttt{FC} \to \texttt{D4}$ \\
+14 & \texttt{CA} & $\texttt{39} \to \mathbf{\texttt{F3}}$ & $\texttt{AA} \to \mathbf{\texttt{60}}$ & $\texttt{C7} \to \mathbf{\texttt{0D}}$ & $\texttt{EE} \to \mathbf{\texttt{24}}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Bước 2 (Berlekamp--Massey):} Từ $\Lambda^{(0)} = B = [\texttt{01}]$, $L=0, m=1, b=\texttt{01}$, tính qua 4 vòng lặp:
+\begin{itemize}
+    \item $n=0$: $d_0 = \texttt{F3}$, $2L \le 0 \implies \gamma = \texttt{F3}$, $\Lambda^{(1)} = [\texttt{01}, \texttt{F3}]$, $L=1, m=1, B=[\texttt{01}], b=\texttt{F3}$.
+    \item $n=1$: $d_1 = \texttt{60} \oplus (\texttt{F3}\odot\texttt{F3}) = \texttt{60} \oplus \texttt{B2} = \texttt{D2}$, $2L > 1 \implies \gamma = \texttt{D2}\oslash\texttt{F3} = \texttt{E7}$, $\Lambda^{(2)} = [\texttt{01}, \texttt{14}]$, $m=2$.
+    \item $n=2$: $d_2 = \texttt{0D} \oplus (\texttt{14}\odot\texttt{60}) = \texttt{0D} \oplus \texttt{D3} = \texttt{DE}$, $2L \le 2 \implies \gamma = \texttt{DE}\oslash\texttt{F3} = \texttt{6B}$, $\Lambda^{(3)} = [\texttt{01}, \texttt{14}, \texttt{6B}]$, $L=2, m=1, B=[\texttt{01}, \texttt{14}], b=\texttt{DE}$.
+    \item $n=3$: $d_3 = \texttt{24} \oplus (\texttt{14}\odot\texttt{0D}) \oplus (\texttt{6B}\odot\texttt{60}) = \texttt{24} \oplus \texttt{E4} \oplus \texttt{3E} = \texttt{FE}$, $2L > 3 \implies \gamma = \texttt{FE}\oslash\texttt{DE} = \texttt{06}$, $\Lambda^{(4)} = [\texttt{01}, \texttt{14}\oplus\texttt{06}, \texttt{6B}\oplus\texttt{78}] = [\texttt{01}, \texttt{12}, \texttt{13}]$, $L=2, m=2$.
+\end{itemize}
+Bảng~\ref{tab:worked_bm} tổng hợp đầy đủ các trạng thái lặp; kết quả $\Lambda(z) = \texttt{01} \oplus \texttt{12}z \oplus \texttt{13}z^2$ thỏa mãn $1 \le L = 2 \le T$ và $\lambda_2 = \texttt{13} \neq 0$.
+
+\begin{table}[!htb]
+\centering
+\caption{Bảng vết 4 bước lặp Berlekamp--Massey trên $S = [\text{F3}, \text{60}, \text{0D}, \text{24}]$.}
+\label{tab:worked_bm}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{} c c c c c c c c l l @{}}
+\toprule
+$n$ & $S_n$ & $d_n$ & $b_{\text{cũ}}$ & $\gamma$ & Nhánh & $L_{\text{mới}}$ & $m_{\text{mới}}$ & $B_{\text{mới}}(z)$ & $\Lambda^{(n+1)}(z)$ \\
+\midrule
+Init & --- & --- & \texttt{01} & --- & Khởi tạo & $0$ & $1$ & \texttt{[01]} & \texttt{[01]} \\
+0 & \texttt{F3} & \texttt{F3} & \texttt{01} & \texttt{F3} & $d_0\neq 0,\, 2L\le 0$ & $1$ & $1$ & \texttt{[01]} & \texttt{[01, F3]} \\
+1 & \texttt{60} & \texttt{D2} & \texttt{F3} & \texttt{E7} & $d_1\neq 0,\, 2L>1$ & $1$ & $2$ & \texttt{[01]} & \texttt{[01, 14]} \\
+2 & \texttt{0D} & \texttt{DE} & \texttt{F3} & \texttt{6B} & $d_2\neq 0,\, 2L\le 2$ & $2$ & $1$ & \texttt{[01, 14]} & \texttt{[01, 14, 6B]} \\
+3 & \texttt{24} & \texttt{FE} & \texttt{DE} & \texttt{06} & $d_3\neq 0,\, 2L>3$ & $2$ & $2$ & \texttt{[01, 14]} & \textbf{\texttt{[01, 12, 13]}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Bước 3 (Tính $\Omega(z)$):} Áp dụng~\eqref{eq:omega01}--\eqref{eq:omega23} cho $\Lambda = [\texttt{01}, \texttt{12}, \texttt{13}]$:
+\begin{align*}
+\Omega_0 &= \texttt{F3}, &
+\Omega_1 &= \texttt{60} \oplus (\texttt{12} \odot \texttt{F3}) = \texttt{60} \oplus \texttt{70} = \texttt{10}, \\
+\Omega_2 &= \texttt{0D} \oplus \texttt{8E} \oplus \texttt{83} = \texttt{00}, &
+\Omega_3 &= \texttt{24} \oplus \texttt{CA} \oplus \texttt{EE} = \texttt{00} \implies \Omega(z) = \texttt{F3} \oplus \texttt{10}z.
+\end{align*}
+
+\paragraph{Bước 4 (Chien Search):} Quét 15 vị trí $i = 0 \dots 14$ (Bảng~\ref{tab:worked_chien}), tìm đúng hai nghiệm $\Lambda(z_i) = \texttt{00}$ tại $i = 0$ ($X_0 = \texttt{13}, z_0 = \texttt{58}$) và $i = 14$ ($X_{14} = \texttt{01}, z_{14} = \texttt{01}$), thỏa mãn $|\mathcal{R}| = 2 = L$.
+
+\begin{table}[!htb]
+\centering
+\caption{Đánh giá Chien Search trên toàn bộ 15 vị trí truyền $i = 0 \dots 14$ với $\Lambda(z) = \texttt{01} \oplus \texttt{12}z \oplus \texttt{13}z^2$.}
+\label{tab:worked_chien}
+\scriptsize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{} c c c c c c c c l @{}}
+\toprule
+$i$ & $14-i$ & $X_i$ & $z_i$ & $z_i^2$ & $\lambda_1 \odot z_i$ & $\lambda_2 \odot z_i^2$ & $\Lambda(z_i)$ & Ghi chú \\
+\midrule
+\textbf{0} & \textbf{14} & \textbf{\texttt{13}} & \textbf{\texttt{58}} & \textbf{\texttt{90}} & \textbf{\texttt{59}} & \textbf{\texttt{58}} & \textbf{\texttt{00}} & \textbf{Nghiệm $i=0$} \\
+1 & 13 & \texttt{87} & \texttt{B0} & \texttt{7A} & \texttt{B2} & \texttt{7D} & \texttt{CE} & --- \\
+2 & 12 & \texttt{CD} & \texttt{7D} & \texttt{F5} & \texttt{79} & \texttt{E9} & \texttt{91} & --- \\
+3 & 11 & \texttt{E8} & \texttt{FA} & \texttt{F3} & \texttt{F2} & \texttt{83} & \texttt{70} & --- \\
+4 & 10 & \texttt{74} & \texttt{E9} & \texttt{EB} & \texttt{F9} & \texttt{36} & \texttt{CE} & --- \\
+5 & 9  & \texttt{3A} & \texttt{CF} & \texttt{8B} & \texttt{EF} & \texttt{D8} & \texttt{36} & --- \\
+6 & 8  & \texttt{1D} & \texttt{83} & \texttt{16} & \texttt{C3} & \texttt{47} & \texttt{85} & --- \\
+7 & 7  & \texttt{80} & \texttt{1B} & \texttt{58} & \texttt{9B} & \texttt{01} & \texttt{9B} & --- \\
+8 & 6  & \texttt{40} & \texttt{36} & \texttt{7D} & \texttt{2B} & \texttt{04} & \texttt{2E} & --- \\
+9 & 5  & \texttt{20} & \texttt{6C} & \texttt{E9} & \texttt{56} & \texttt{10} & \texttt{47} & --- \\
+10 & 4 & \texttt{10} & \texttt{D8} & \texttt{83} & \texttt{AC} & \texttt{40} & \texttt{ED} & --- \\
+11 & 3 & \texttt{08} & \texttt{AD} & \texttt{36} & \texttt{45} & \texttt{1D} & \texttt{59} & --- \\
+12 & 2 & \texttt{04} & \texttt{47} & \texttt{D8} & \texttt{8A} & \texttt{74} & \texttt{FF} & --- \\
+13 & 1 & \texttt{02} & \texttt{8E} & \texttt{47} & \texttt{09} & \texttt{CD} & \texttt{C5} & --- \\
+\textbf{14} & \textbf{0} & \textbf{\texttt{01}} & \textbf{\texttt{01}} & \textbf{\texttt{01}} & \textbf{\texttt{12}} & \textbf{\texttt{13}} & \textbf{\texttt{00}} & \textbf{Nghiệm $i=14$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Bước 5 (Forney, Sửa lỗi và Re-verify):} Đạo hàm hình thức $\Lambda'(z) = \lambda_1 = \texttt{12} \neq \texttt{00}$. Áp dụng~\eqref{eq:forney_f0}:
+\begin{align*}
+i=0 &: \quad \Omega(\texttt{58}) = \texttt{F3} \oplus (\texttt{10}\odot\texttt{58}) = \texttt{F3}\oplus\texttt{E9} = \texttt{1A} \implies E_0 = \texttt{13} \odot (\texttt{1A}\oslash\texttt{12}) = \texttt{13}\odot\texttt{4F} = \texttt{55}, \\
+i=14 &: \quad \Omega(\texttt{01}) = \texttt{F3} \oplus (\texttt{10}\odot\texttt{01}) = \texttt{F3}\oplus\texttt{10} = \texttt{E3} \implies E_{14} = \texttt{01} \odot (\texttt{E3}\oslash\texttt{12}) = \texttt{01}\odot\texttt{A6} = \texttt{A6}.
+\end{align*}
+Phép XOR khôi phục $c'_0 = \texttt{55} \oplus \texttt{55} = \texttt{00}$ và $c'_{14} = \texttt{CA} \oplus \texttt{A6} = \texttt{6C}$, trả về đúng từ mã chuẩn \texttt{[00..0A, C0, 8F, 28, 6C]}. Tái tính syndrome theo Horner trên $c'$ cho $\text{acc}_j^{(14)} = \texttt{00}$ ở cả bốn kênh ($S'_0 = S'_1 = S'_2 = S'_3 = \texttt{00}$), khẳng định \texttt{fail = 0}.
+
+\section{Kiểm chứng Giải thuật bằng Golden Model Python và Bộ Test Vectors}
+
+\subsection{Kiến trúc mô hình tham chiếu Python trong thư mục \texttt{model/}}
+
+Thư mục \texttt{model/} cài đặt mô hình tham chiếu độc lập (\textit{Golden Model}) tuân thủ hoàn toàn các tham số tại \texttt{rtl/include/rs\_params.vh}, gồm ba tệp phối hợp:
+\begin{itemize}
+    \item \textbf{\texttt{gf256\_model.py}:} Định nghĩa \texttt{FIELD\_POLY = 0x11D}, \texttt{POLY\_LOW = 0x1D}, \texttt{ALPHA = 0x02}, \texttt{FIELD\_ORDER = 255}. Hàm \texttt{\_build\_tables()} tạo bảng \texttt{EXP\_TABLE} (510 phần tử, nhân đôi $2\times 255$ để bỏ phép chia dư \texttt{\% 255} khi tra tích) và \texttt{LOG\_TABLE} (256 phần tử, \texttt{log\_table[0] = -1}). Hai hàm nhân đối chứng \texttt{gf\_mul\_shift} (8 bước dịch-XOR) và \texttt{gf\_mul\_lut} (tra bảng) cùng \texttt{gf\_inv}, \texttt{gf\_div} (bắt ngoại lệ \texttt{ZeroDivisionError} khi chia cho $0$) và lớp \texttt{GF256} được hàm \texttt{self\_test()} kiểm thử vét cạn $256 \times 256 = 65{,}536$ cặp nhân và $255$ nghịch đảo.
+    \item \textbf{\texttt{rs\_reference.py}:} Hiện thực bộ mã hóa \texttt{rs\_encode} với \texttt{GEN\_POLY = [0x01, 0x0F, 0x36, 0x78, 0x40]} và chuỗi 6 hàm giải mã (\texttt{calc\_syndromes}, \texttt{berlekamp\_massey}, \texttt{error\_evaluator}, \texttt{chien\_search}, \texttt{forney}, \texttt{rs\_decode}). Hàm \texttt{rs\_decode} thực thi đủ 5 chốt kiểm tra thất bại ($L=0$, $L>T$, $|\text{roots}|\neq L$, $\Lambda'(z_i)=0$, \texttt{verify\_syn != 0}), đồng thời hàm \texttt{self\_test()} kiểm tra ví dụ biên 2 lỗi và quét toàn bộ 15 vị trí đơn lỗi với 4 mặt nạ \texttt{0x01, 0x7F, 0x80, 0xFF}.
+    \item \textbf{\texttt{generate\_vectors.py}:} Tự động tạo 5 thư mục vector kiểm thử chuẩn \texttt{\$readmemh} (mỗi dòng 1 byte hex 2 chữ số viết hoa) kèm xác thực nội tuyến bằng \texttt{assert} thông qua \texttt{rs\_decode}.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize, frame=single, breaklines=true, numbers=left, numberstyle=\tiny, xleftmargin=1.5em, keywordstyle=\bfseries\color{blue!70!black}, commentstyle=\itshape\color{green!45!black}, stringstyle=\color{red!60!black}, caption={Tao bang log/exp va phep nhan doi chung trong \texttt{model/gf256\_model.py}.}, label={lst:gf256_core}]
+def _build_tables() -> Tuple[List[int], List[int]]:
+    # Build double-length exp_table (2*255) and log_table for GF(256)
+    exp_tbl, log_tbl, cur = [0] * (FIELD_ORDER * 2), [-1] * FIELD_SIZE, 1
+    for i in range(FIELD_ORDER):
+        exp_tbl[i] = exp_tbl[i + FIELD_ORDER] = cur
+        log_tbl[cur] = i
+        carry = cur & 0x80
+        cur = (cur << 1) & 0xFF
+        if carry:
+            cur ^= POLY_LOW  # 0x1D reduction
+    return exp_tbl, log_tbl
+
+def gf_mul_shift(a: int, b: int) -> int:
+    # Independent 8-step shift-and-XOR multiplier (no LUT)
+    product, cur_a, cur_b = 0, a, b
+    for _ in range(8):
+        if cur_b & 1:
+            product ^= cur_a
+        carry = cur_a & 0x80
+        cur_a = (cur_a << 1) & 0xFF
+        if carry:
+            cur_a ^= POLY_LOW
+        cur_b >>= 1
+    return product
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize, frame=single, breaklines=true, numbers=left, numberstyle=\tiny, xleftmargin=1.5em, keywordstyle=\bfseries\color{blue!70!black}, commentstyle=\itshape\color{green!45!black}, stringstyle=\color{red!60!black}, caption={Ham Berlekamp-Massey va bo giai ma hoan chinh trong \texttt{model/rs\_reference.py}.}, label={lst:rs_bm_decode}]
+def berlekamp_massey(syndromes: List[int], r: int = RS_R, t: int = RS_T) -> Tuple[List[int], int]:
+    C, B = [1] + [0] * r, [1] + [0] * r
+    L, shift, b = 0, 1, 1
+    for q in range(r):
+        d = syndromes[q]
+        for j in range(1, L + 1):
+            d ^= gf_mul(C[j], syndromes[q - j])
+        if d == 0:
+            shift += 1
+            continue
+        previous, scale = C.copy(), gf_div(d, b)
+        for j in range(r + 1 - shift):
+            C[j + shift] ^= gf_mul(scale, B[j])
+        if 2 * L <= q:
+            L, B, b, shift = q + 1 - L, previous, d, 1
+        else:
+            shift += 1
+    return C[: L + 1], L
+
+def rs_decode(received, n=RS_N, k=RS_K, r=RS_R, t=RS_T, first_root=RS_FIRST_ROOT):
+    syn = calc_syndromes(received, r=r, first_root=first_root)
+    if all(s == 0 for s in syn):
+        return list(received), 0, False  # Fast-path
+    lambda_poly, l_deg = berlekamp_massey(syn, r=r, t=t)
+    if l_deg == 0 or l_deg > t:
+        return list(received), l_deg, True
+    omega_poly = error_evaluator(syn, lambda_poly, l_deg, r=r)
+    roots = chien_search(lambda_poly, l_deg, n=n)
+    if len(roots) != l_deg:
+        return list(received), l_deg, True
+    try:
+        err_vals = forney(lambda_poly, omega_poly, roots, first_root=first_root)
+    except ZeroDivisionError:
+        return list(received), l_deg, True
+    corrected = list(received)
+    for pos, err_val in err_vals.items():
+        corrected[pos] ^= err_val
+    if any(s != 0 for s in calc_syndromes(corrected, r=r, first_root=first_root)):
+        return list(received), l_deg, True
+    return corrected, len(roots), False
+\end{lstlisting}
+
+\subsection{Tổng hợp và phân tích cơ chế kiểm chứng 5 kịch bản trong \texttt{vectors/}}
+
+Bảng~\ref{tab:vectors_hex_data} tổng hợp dữ liệu hex thực tế đọc từ các tệp \texttt{input\_data.hex} (11 byte), \texttt{encoded\_data.hex}, \texttt{corrupted\_data.hex}, \texttt{expected\_codeword.hex} và \texttt{case\_info.json} của 5 kịch bản; Bảng~\ref{tab:vectors_trace_summary} ghi lại các đại lượng trung gian xác nhận bởi mô hình tham chiếu.
+
+\begin{table}[!htb]
+\centering
+\caption{Dữ liệu vector kiểm thử thực tế (hệ hex) trích xuất từ 5 kịch bản trong thư mục \texttt{vectors/}.}
+\label{tab:vectors_hex_data}
+\scriptsize
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{} l p{11.6cm} @{}}
+\toprule
+Kịch bản & Dữ liệu thực tế trong các tệp \texttt{.hex} / \texttt{case\_info.json} \\
+\midrule
+\texttt{no\_error/} &
+\textbf{input\_data}: \texttt{00 01 02 03 04 05 06 07 08 09 0A} \\
+(0 lỗi) & \textbf{encoded / corrupted / expected}: \texttt{00 01 02 03 04 05 06 07 08 09 0A C0 8F 28 6C} \\
+\midrule
+\texttt{one\_error/} &
+\textbf{input\_data}: \texttt{10 21 32 43 54 65 76 87 98 A9 BA} \\
+(1 lỗi: $i=3 \oplus \texttt{A5}$) & \textbf{encoded / expected}: \texttt{10 21 32 43 54 65 76 87 98 A9 BA 61 CE 07 A3} \\
+& \textbf{corrupted\_data}: \texttt{10 21 32 \textbf{E6} 54 65 76 87 98 A9 BA 61 CE 07 A3} \\
+\midrule
+\texttt{two\_errors/} &
+\textbf{input\_data}: \texttt{00 01 02 03 04 05 06 07 08 09 0A} \\
+(2 lỗi biên: $i=0 \oplus \texttt{55}$, & \textbf{encoded / expected}: \texttt{00 01 02 03 04 05 06 07 08 09 0A C0 8F 28 6C} \\
+$i=14 \oplus \texttt{A6}$) & \textbf{corrupted\_data}: \texttt{\textbf{55} 01 02 03 04 05 06 07 08 09 0A C0 8F 28 \textbf{CA}} \\
+\midrule
+\texttt{parity\_error/} &
+\textbf{input\_data}: \texttt{AA 55 AA 55 AA 55 AA 55 AA 55 AA} \\
+(2 lỗi parity: $i=11 \oplus \texttt{3C}$, & \textbf{encoded / expected}: \texttt{AA 55 AA 55 AA 55 AA 55 AA 55 AA 82 15 21 E3} \\
+$i=13 \oplus \texttt{C3}$) & \textbf{corrupted\_data}: \texttt{AA 55 AA 55 AA 55 AA 55 AA 55 AA \textbf{BE} 15 \textbf{E2} E3} \\
+\midrule
+\texttt{beyond\_capacity/} &
+\textbf{input\_data}: \texttt{11 22 33 44 55 66 77 88 99 AA BB} \\
+(3 lỗi: $i=1\oplus\texttt{45}, 5\oplus\texttt{67}$, & \textbf{encoded\_data}: \texttt{11 22 33 44 55 66 77 88 99 AA BB 73 9D 91 7F} \\
+$i=9\oplus\texttt{89}$) & \textbf{corrupted\_data}: \texttt{11 \textbf{67} 33 44 55 \textbf{01} 77 88 99 \textbf{23} BB 73 9D 91 7F} \\
+& \textbf{case\_info.json}: \texttt{fail\_flag\_expected=true}, \texttt{decoder\_result\_fail=true}, \texttt{lambda\_degree=2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!htb]
+\centering
+\caption{Các đại lượng giải mã trung gian của Golden Model cho 5 bộ test vector.}
+\label{tab:vectors_trace_summary}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{} l c c c c c c @{}}
+\toprule
+Kịch bản & $S = [S_0..S_3]$ & $\Lambda(z)$ & $L$ & $\Omega(z)$ & Nghiệm Chien $(i, X_i, z_i)$ & Giá trị $E_i$ \& \texttt{fail} \\
+\midrule
+\texttt{no\_error} & \texttt{[00,00,00,00]} & --- & 0 & --- & Bỏ qua (Fast-path) & $0$ lỗi, \texttt{fail=0} \\
+\texttt{one\_error} & \texttt{[A5,0E,59,45]} & \texttt{[01,E8]} & 1 & \texttt{[A5]} & $(3, \texttt{E8}, \texttt{FA})$ & $E_3=\texttt{A5}$, \texttt{fail=0} \\
+\texttt{two\_errors} & \texttt{[F3,60,0D,24]} & \texttt{[01,12,13]} & 2 & \texttt{[F3,10]} & $(0,\texttt{13},\texttt{58}), (14,\texttt{01},\texttt{01})$ & $E_0=\texttt{55}, E_{14}=\texttt{A6}$, \texttt{fail=0} \\
+\texttt{parity\_error} & \texttt{[FF,66,90,E7]} & \texttt{[01,0A,10]} & 2 & \texttt{[FF,2E]} & $(11,\texttt{08},\texttt{AD}), (13,\texttt{02},\texttt{8E})$ & $E_{11}=\texttt{3C}, E_{13}=\texttt{C3}$, \texttt{fail=0} \\
+\texttt{beyond\_capacity} & \texttt{[AB,98,6D,5F]} & \texttt{[01,72,6F]} & 2 & \texttt{[AB,E0]} & $\emptyset$ (0 nghiệm $\in [0,14]$) & Chặn bởi Chien, \texttt{fail=1} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Cơ chế kiểm chứng của từng kịch bản như sau:
+\begin{itemize}
+    \item \textbf{\texttt{no\_error}:} Xác nhận bộ mã hóa sinh đúng parity \texttt{C0 8F 28 6C} cho dữ liệu \texttt{00..0A} và kích hoạt nhánh Fast-path ($S = 0$), xuất nguyên 15 byte với \texttt{err\_cnt = 0, fail = 0}.
+    \item \textbf{\texttt{one\_error}:} Kiểm chứng nhánh $L=1$ với lỗi đơn tại dữ liệu $i=3$ (\texttt{43}$\oplus$\texttt{A5}$=$\texttt{E6}). BM cho $\Lambda(z)=\texttt{01}\oplus\texttt{E8}z$, $\Omega(z)=\texttt{A5}$, Chien định vị $(3, \texttt{E8}, \texttt{FA})$, và Forney tính $E_3 = \texttt{E8}\odot(\texttt{A5}\oslash\texttt{E8}) = \texttt{A5}$.
+    \item \textbf{\texttt{two\_errors}:} Kiểm chứng trường hợp cực biên $L=T=2$ tại đầu dữ liệu ($i=0$) và cuối parity ($i=14$), xác thực hai mốc ánh xạ $X_0=\texttt{13}, X_{14}=\texttt{01}$ cùng đầy đủ các nhánh BM, Forney và Re-verify.
+    \item \textbf{\texttt{parity\_error}:} Tiêm 2 lỗi hoàn toàn trong vùng parity ($i=11, 13$). Dù dữ liệu \texttt{AA 55 ... AA} còn nguyên, bộ giải mã vẫn phải sửa đúng parity về \texttt{82 15 21 E3} để pha Re-verify đưa $S' \to 0$; nếu bỏ qua sửa parity, Re-verify sẽ báo lỗi giả.
+    \item \textbf{\texttt{beyond\_capacity}:} Với 3 lỗi ($>T$), BM trả về $\Lambda(z) = \texttt{01} \oplus \texttt{72}z \oplus \texttt{6F}z^2$ có bậc $L = 2 \le T$, tức rào chắn $L > T$ đơn lẻ không phát hiện được. Tuy nhiên, hai nghiệm của đa thức này rơi vào vùng 240 byte rút ngắn đã bỏ ở mã cha ($j = 63$ với $X_{63}=\texttt{41}, z_{63}=\texttt{5F}$ và $j = 129$ với $X_{129}=\texttt{33}, z_{129}=\texttt{2E}$). Khi Chien search giới hạn quét trên $i \in [0, 14]$, số nghiệm bằng $0 \neq L = 2$ lập tức kích hoạt \texttt{fail = 1} đúng theo \texttt{case\_info.json}.
+\end{itemize}
+
+Kết thúc Chương~1, toàn bộ cơ sở toán học $\text{GF}(2^8)$, cấu hình rút ngắn $\text{RS}(15,11)$, giải thuật giải mã 5 giai đoạn và bộ Golden Model kèm 5 test vector \texttt{.hex} đã được kiểm chứng nhất quán, tạo chuẩn đối chiếu cho thiết kế kiến trúc phần cứng RTL ở Chương~2.

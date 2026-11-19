@@ -1,0 +1,23 @@
+\babel@toc {vietnamese}{}\relax 
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces So sánh góc nhìn lỗi bit và lỗi symbol đối với cấu hình $\text {RS}(15,11)$ trên $\text {GF}(256)$}}{1}{table.1.1}%
+\contentsline {table}{\numberline {1.2}{\ignorespaces Ánh xạ giữa biểu diễn byte, nhị phân và đa thức trên $\text {GF}(256)$}}{2}{table.1.2}%
+\contentsline {table}{\numberline {1.3}{\ignorespaces Các lũy thừa $\alpha ^i$ trong $\text {GF}(256)$ với $p(u) = \texttt {0x11D}$, $\alpha = \texttt {0x02}$}}{3}{table.1.3}%
+\contentsline {table}{\numberline {1.4}{\ignorespaces Tính tay 8 bước thuật toán dịch--XOR cho phép nhân $\texttt {0x57} \times \texttt {0x83} = \texttt {0x31}$}}{3}{table.1.4}%
+\contentsline {table}{\numberline {1.5}{\ignorespaces Danh mục 14 tham số chuẩn trong \texttt {rtl/include/rs\_params.vh}}}{4}{table.1.5}%
+\contentsline {table}{\numberline {1.6}{\ignorespaces Quy ước đa thức và thứ tự lưu mảng hệ số giữa Encoder, Decoder và Model}}{6}{table.1.6}%
+\contentsline {table}{\numberline {1.7}{\ignorespaces Diễn biến từng chu kỳ của bộ mã hóa LFSR 4 tầng cho vector \texttt {vectors/no\_error/}}}{7}{table.1.7}%
+\contentsline {table}{\numberline {1.8}{\ignorespaces Diễn biến tích lũy Horner cho $S_0..S_3$ trên vector \texttt {two\_errors}.}}{10}{table.1.8}%
+\contentsline {table}{\numberline {1.9}{\ignorespaces Bảng vết 4 bước lặp Berlekamp--Massey trên $S = [\texttt {F3}, \texttt {60}, \texttt {0D}, \texttt {24}]$.}}{10}{table.1.9}%
+\contentsline {table}{\numberline {1.10}{\ignorespaces Đánh giá Chien Search trên 15 vị trí $i = 0 \dots 14$ với $\Lambda (z) = \texttt {01} \oplus \texttt {12}z \oplus \texttt {13}z^2$.}}{10}{table.1.10}%
+\contentsline {table}{\numberline {1.11}{\ignorespaces Dữ liệu vector kiểm thử thực tế (hệ hex) trích xuất từ 5 kịch bản trong thư mục \texttt {vectors/}.}}{13}{table.1.11}%
+\contentsline {table}{\numberline {1.12}{\ignorespaces Các đại lượng giải mã trung gian của Golden Model cho 5 bộ test vector.}}{13}{table.1.12}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Thông số tài nguyên phần cứng của vi mạch Intel MAX 10 (\texttt {10M50DAF484C7G})}}{15}{table.2.1}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Bảng mã giải mã LED 7 đoạn Anode chung trong \texttt {rtl/board/hex\_decoder.v} (\texttt {DP = 1})}}{16}{table.2.2}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Bảng quy hoạch toàn bộ 32 chân tín hiệu vật lý trên Kit DE10-Lite}}{17}{table.2.3}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Tổng hợp kiến trúc và số chu kỳ xử lý của 6 module giải mã trong \texttt {rs\_decoder}}}{21}{table.3.1}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Tổng hợp kết quả kiểm thử toàn bộ 10 Testbench RTL và hệ thống}}{24}{table.3.2}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Báo cáo tài nguyên phần cứng thực tế sau Place \& Route (Quartus Prime 25.1std.0)}}{25}{table.3.3}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Kết quả phân tích thời gian tĩnh (TimeQuest STA) tại xung nhịp 50\,MHz}}{25}{table.3.4}%

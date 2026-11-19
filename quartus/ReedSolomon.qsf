@@ -1,5 +1,5 @@
 # =============================================================================
-# Quartus Prime settings - Reed-Solomon tren Terasic DE10-Lite
+# Quartus Prime settings - Reed-Solomon RS(5,3) tren GF(8) cho Terasic DE10-Lite
 # Duong dan file tuong doi so voi thu muc quartus/
 # =============================================================================
 
@@ -42,24 +42,19 @@ set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 # -----------------------------------------------------------------------------
 # Source files
 # -----------------------------------------------------------------------------
-# Thu muc tim file `include (rs_params.vh)
 set_global_assignment -name SEARCH_PATH ../rtl/include
 
 # Board / giao tiep ngoai vi
 set_global_assignment -name VERILOG_FILE ../rtl/board/top_de10_lite.v
-set_global_assignment -name VERILOG_FILE ../rtl/board/reset_sync.v
 set_global_assignment -name VERILOG_FILE ../rtl/board/input_control.v
-set_global_assignment -name VERILOG_FILE ../rtl/board/display_control.v
 set_global_assignment -name VERILOG_FILE ../rtl/board/hex_decoder.v
 
-# Dieu khien & bo dem
+# Dieu khien
 set_global_assignment -name VERILOG_FILE ../rtl/controller/rs_controller.v
-set_global_assignment -name VERILOG_FILE ../rtl/memory/data_buffer.v
 
-# Phep toan GF(256)
-set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf256_add.v
-set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf256_mul.v
-set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf256_inv.v
+# Phep toan GF(8)
+set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf8_mul.v
+set_global_assignment -name VERILOG_FILE ../rtl/gf_arithmetic/gf8_inv.v
 
 # Encoder
 set_global_assignment -name VERILOG_FILE ../rtl/rs_encoder/rs_encoder.v
@@ -71,18 +66,15 @@ set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/berlekamp_massey.v
 set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/error_evaluator.v
 set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/chien_search.v
 set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/forney.v
-set_global_assignment -name VERILOG_FILE ../rtl/rs_decoder/error_corrector.v
 
-# Demo / kiem chung tren board
+# Tao loi thu nghiem
 set_global_assignment -name VERILOG_FILE ../rtl/demo/error_injector.v
-set_global_assignment -name VERILOG_FILE ../rtl/demo/cycle_counter.v
-set_global_assignment -name VERILOG_FILE ../rtl/demo/result_checker.v
 
 # Timing constraints
 set_global_assignment -name SDC_FILE timing.sdc
 
 # -----------------------------------------------------------------------------
-# Pin assignments (theo README_RS_DE10_Lite.md muc 5 & 7)
+# Pin assignments (DE10-Lite)
 # -----------------------------------------------------------------------------
 # Clock 50 MHz
 set_location_assignment PIN_P11 -to MAX10_CLK1_50
@@ -103,10 +95,17 @@ set_location_assignment PIN_A14 -to SW[7]
 set_location_assignment PIN_B14 -to SW[8]
 set_location_assignment PIN_F15 -to SW[9]
 
-# Status LEDs
+# 10 LEDs (LEDR[9:0])
 set_location_assignment PIN_A8  -to LEDR[0]
 set_location_assignment PIN_A9  -to LEDR[1]
 set_location_assignment PIN_A10 -to LEDR[2]
+set_location_assignment PIN_B10 -to LEDR[3]
+set_location_assignment PIN_D13 -to LEDR[4]
+set_location_assignment PIN_C13 -to LEDR[5]
+set_location_assignment PIN_E14 -to LEDR[6]
+set_location_assignment PIN_D14 -to LEDR[7]
+set_location_assignment PIN_A11 -to LEDR[8]
+set_location_assignment PIN_B11 -to LEDR[9]
 
 # HEX0 (tich cuc thap)
 set_location_assignment PIN_C14 -to HEX0[0]
@@ -128,6 +127,16 @@ set_location_assignment PIN_A18 -to HEX1[5]
 set_location_assignment PIN_B17 -to HEX1[6]
 set_location_assignment PIN_A16 -to HEX1[7]
 
+# HEX2 (tich cuc thap)
+set_location_assignment PIN_B20 -to HEX2[0]
+set_location_assignment PIN_A20 -to HEX2[1]
+set_location_assignment PIN_B19 -to HEX2[2]
+set_location_assignment PIN_A21 -to HEX2[3]
+set_location_assignment PIN_B21 -to HEX2[4]
+set_location_assignment PIN_C22 -to HEX2[5]
+set_location_assignment PIN_B22 -to HEX2[6]
+set_location_assignment PIN_A19 -to HEX2[7]
+
 # -----------------------------------------------------------------------------
 # I/O standards
 # -----------------------------------------------------------------------------
@@ -138,9 +147,11 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[*]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to LEDR[*]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX0[*]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX1[*]
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HEX2[*]
 
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
-set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
+set_global_assignment -name EDA_OUTPUT_DATA_FORMAT NONE -section_id eda_simulation
+
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

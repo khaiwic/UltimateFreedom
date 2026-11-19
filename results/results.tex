@@ -1,0 +1,1808 @@
+\documentclass[11pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage[left=2.2cm,right=1.8cm,top=2.0cm,bottom=2.0cm]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{graphicx}
+\usepackage{booktabs,array,tabularx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+
+% -----------------------------------------------------------------------------
+% Cau hinh gian dong, muc luc va dinh dang chung
+% -----------------------------------------------------------------------------
+\linespread{1.15}
+\setlength{\headheight}{14pt}
+\setlength{\parindent}{0.7cm}
+\setlength{\parskip}{2pt}
+\setlength{\emergencystretch}{1.4em}
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{3}
+
+% Bang mau cho bao cao ky thuat
+\definecolor{primaryblue}{RGB}{20, 62, 128}
+\definecolor{secondaryblue}{RGB}{32, 95, 168}
+\definecolor{accentblue}{RGB}{0, 112, 184}
+\definecolor{mutedgray}{RGB}{90, 100, 110}
+\definecolor{boxbg}{RGB}{242, 247, 253}
+\definecolor{boxborder}{RGB}{180, 204, 232}
+\definecolor{codebg}{RGB}{248, 250, 252}
+\definecolor{codeframe}{RGB}{205, 215, 226}
+\definecolor{codekw}{RGB}{0, 72, 155}
+\definecolor{codecmt}{RGB}{60, 125, 70}
+\definecolor{codestr}{RGB}{162, 42, 42}
+
+% Cau hinh hyperref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=primaryblue,
+    urlcolor=accentblue,
+    pdftitle={Thiet ke He thong Ma hoa - Giai ma Reed-Solomon RS(15,11) tren FPGA DE10-Lite},
+    pdfauthor={Du an UltimateFreedom},
+    bookmarksnumbered=true
+}
+
+% Cau hinh header va footer voi fancyhdr
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\scriptsize\color{mutedgray} UltimateFreedom -- $\text{RS}(15,11)$ trên DE10-Lite}
+\fancyhead[R]{\scriptsize\color{mutedgray}\nouppercase{\leftmark}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[C]{\small\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\renewcommand{\chaptermark}[1]{\markboth{\chaptername\ \thechapter.\ #1}{}}
+
+% Cau hinh tieu de chuong va muc gon voi titlesec
+\titleformat{\chapter}[hang]
+    {\normalfont\LARGE\bfseries\color{primaryblue}}
+    {\chaptertitlename\ \thechapter:}{0.6em}{}
+\titlespacing*{\chapter}{0pt}{-12pt}{10pt}
+
+\titleformat{\section}
+    {\normalfont\large\bfseries\color{primaryblue}}
+    {\thesection}{0.7em}{}
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+
+\titleformat{\subsection}
+    {\normalfont\normalsize\bfseries\color{secondaryblue}}
+    {\thesubsection}{0.7em}{}
+\titlespacing*{\subsection}{0pt}{8pt}{3pt}
+
+\titlespacing*{\paragraph}{0pt}{6pt}{0.6em}
+
+% Cau hinh listings cho Verilog, Python va Tcl/SDC (chi dung ASCII ben trong code)
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    breaklines=true,
+    breakatwhitespace=false,
+    tabsize=4,
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{mutedgray},
+    numbersep=6pt,
+    xleftmargin=12pt,
+    framexleftmargin=12pt,
+    keywordstyle=\color{codekw}\bfseries,
+    commentstyle=\color{codecmt}\itshape,
+    stringstyle=\color{codestr},
+    columns=flexible,
+    keepspaces=true
+}
+
+\lstdefinestyle{verilogstyle}{
+    language=Verilog,
+    morekeywords={localparam, genvar, generate, endgenerate, wire, reg}
+}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python
+}
+
+\lstdefinestyle{tclstyle}{
+    language=Tcl,
+    morekeywords={create_clock, derive_clock_uncertainty, get_ports, set_global_assignment, set_location_assignment, set_instance_assignment}
+}
+
+% Dinh dang danh sach gon gang
+\setlist[itemize]{topsep=2pt, itemsep=1.5pt, parsep=0pt, leftmargin=1.4em}
+\setlist[enumerate]{topsep=2pt, itemsep=1.5pt, parsep=0pt, leftmargin=1.4em}
+
+\begin{document}
+
+% =============================================================================
+% TRANG BIA (TITLE PAGE)
+% =============================================================================
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw[line width=2.2pt, color=primaryblue]
+            ($(current page.north west)+(1.4cm,-1.4cm)$)
+            rectangle
+            ($(current page.south east)+(-1.4cm,1.4cm)$);
+        \draw[line width=0.7pt, color=secondaryblue]
+            ($(current page.north west)+(1.58cm,-1.58cm)$)
+            rectangle
+            ($(current page.south east)+(-1.58cm,1.58cm)$);
+        \fill[primaryblue]
+            ($(current page.north west)+(1.58cm,-1.58cm)$)
+            rectangle
+            ($(current page.north east)+(-1.58cm,-1.88cm)$);
+    \end{tikzpicture}
+
+    \centering
+    \vspace*{1.0cm}
+    {\large\bfseries\color{primaryblue} BÁO CÁO BÀI TẬP LỚN -- KỸ THUẬT THIẾT KẾ VI MẠCH FPGA}\\[0.25cm]
+    {\normalsize\color{mutedgray} DỰ ÁN MÃ NGUỒN MỞ \textbf{ULTIMATEFREEDOM}}\\[0.5cm]
+
+    \rule{0.75\textwidth}{0.8pt}\\[1.5cm]
+
+    {\large\bfseries\color{secondaryblue} ĐỀ TÀI}\\[0.45cm]
+    {\LARGE\bfseries\color{primaryblue}
+        NGHIÊN CỨU, THIẾT KẾ VÀ THỰC THI HỆ THỐNG\\[0.22cm]
+        MÃ HÓA -- GIẢI MÃ REED--SOLOMON $\text{RS}(15,11)$\\[0.22cm]
+        TRÊN KIT FPGA TERASIC DE10-LITE
+    }\\[0.6cm]
+    {\normalsize\itshape\color{mutedgray}
+        Kiến trúc RTL bằng Verilog HDL trên trường hữu hạn $\text{GF}(256)$,\\
+        mô hình tham chiếu Python và kiểm chứng trên Intel MAX 10
+    }\\[1.4cm]
+
+    \begin{tcolorbox}[
+        width=0.90\textwidth,
+        colback=boxbg,
+        colframe=primaryblue,
+        boxrule=0.8pt,
+        arc=4pt,
+        left=10pt,
+        right=10pt,
+        top=8pt,
+        bottom=8pt
+    ]
+        \small
+        \renewcommand{\arraystretch}{1.25}
+        \begin{tabularx}{\linewidth}{@{}>{\bfseries\color{primaryblue}}l X@{}}
+            Chuẩn mã hóa: & $\text{RS}(15,11)$ systematic rút ngắn từ $\text{RS}(255,251)$ trên $\text{GF}(256)$ \\
+            Khả năng sửa sai: & $d_{\min} = 5$, sửa tối đa $T = 2$ symbol lỗi bất kỳ trên khối $N = 15$ byte \\
+            Đa thức trường \& sinh: & $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ (\texttt{9'h11D}), $\alpha = \texttt{0x02}$, $g(x) = x^4 + \texttt{0x0F}x^3 + \texttt{0x36}x^2 + \texttt{0x78}x + \texttt{0x40}$ \\
+            Phần cứng mục tiêu: & Terasic DE10-Lite -- FPGA Intel MAX 10 (\texttt{10M50DAF484C7G}), $50\text{ MHz}$ \\
+            Ngôn ngữ \& Công cụ: & Verilog HDL, Python 3, Icarus Verilog / QuestaSim, Intel Quartus Prime \\
+            Quy mô kiểm chứng: & 10 testbench độc lập (\texttt{105.139} lượt kiểm tra, 0 lỗi) \& 5 bộ vector chuẩn
+        \end{tabularx}
+    \end{tcolorbox}
+
+    \vfill
+    \rule{0.45\textwidth}{0.5pt}\\[0.3cm]
+    {\normalsize\bfseries\color{primaryblue} DỰ ÁN ULTIMATEFREEDOM -- TÀI LIỆU KỸ THUẬT TỔNG HỢP}\\[0.15cm]
+    {\small\color{mutedgray} Tham chiếu đặc tả: \texttt{rtl/include/rs\_params.vh}, \texttt{docs/}, \texttt{model/}, \texttt{tb/}}
+    \vspace*{0.6cm}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+% =============================================================================
+% PHAN DAU (ROMAN PAGE NUMBERING)
+% =============================================================================
+\pagenumbering{roman}
+
+\chapter*{Lời nói đầu và Tổng quan Báo cáo}
+\addcontentsline{toc}{chapter}{Lời nói đầu và Tổng quan Báo cáo}
+\markboth{Lời nói đầu và Tổng quan Báo cáo}{Lời nói đầu và Tổng quan Báo cáo}
+
+Hệ thống mã hóa -- giải mã Reed--Solomon $\text{RS}(15,11)$ trên trường hữu hạn $\text{GF}(256)$ được thiết kế bằng Verilog HDL và triển khai trên kit FPGA \textbf{Terasic DE10-Lite} sử dụng vi mạch Intel MAX 10 (\texttt{10M50DAF484C7G}). Mỗi khối dữ liệu gồm $K = 11$ symbol dữ liệu ($88\text{ bit}$) và $R = 4$ symbol kiểm tra parity ($32\text{ bit}$), tạo thành từ mã systematic dài $N = 15$ symbol ($120\text{ bit}$) rút ngắn từ mã cha $\text{RS}(255,251)$ với khoảng cách tối thiểu $d_{\min} = 5$ và năng lực sửa tối đa $T = 2$ symbol lỗi bất kỳ. Kiến trúc phần cứng vận hành ở tần số $50\text{ MHz}$ theo giao thức luồng \texttt{valid}/\texttt{ready} có \textit{backpressure}, tích hợp đường dẫn nhanh (\textit{Fast-path}) khi syndrome bằng 0 và bước tái kiểm tra (\textit{Re-verify}) nhằm phát hiện trường hợp vượt ngưỡng sửa lỗi.
+
+Nội dung báo cáo gồm 3 chương kỹ thuật:
+\begin{itemize}
+    \item \textbf{Chương 1 -- Tổng quan về Thuật toán Reed--Solomon, Mã hóa và Giải mã:} Trình bày lý thuyết mã MDS $\text{RS}(15,11)$, đại số $\text{GF}(256)$ với đa thức nguyên thủy \texttt{9'h11D}, 14 tham số chuẩn trong \texttt{rs\_params.vh}, bộ mã hóa LFSR systematic, giải thuật giải mã 5 giai đoạn (Syndrome, Berlekamp--Massey, $\Omega(z)$, Chien Search, Forney kèm Re-verify), mô hình tham chiếu Python (\texttt{model/}) và 5 kịch bản vector kiểm thử (\texttt{vectors/})~\cite{reed1960,lincostello2004,morelos2006}.
+    \item \textbf{Chương 2 -- Giới thiệu về Board FPGA Terasic DE10-Lite:} Phân tích kiến trúc vi mạch Intel MAX 10 (\texttt{10M50DAF484C7G}) gồm cấu trúc LE, LAB, bộ nhớ nhúng M9K, bộ nhân $9\times 9$, PLL và Flash cấu hình nội CFM/UFM; đặc tính điện -- logic của các ngoại vi (\texttt{SW[9:0]}, \texttt{KEY[1:0]} qua mạch \textit{Schmitt Trigger}, \texttt{LEDR[2:0]}, LED 7 đoạn Anode chung \texttt{HEX1:HEX0}); quy hoạch 32 chân trong \texttt{ReedSolomon.qsf} và ràng buộc thời gian \texttt{timing.sdc}~\cite{intelmax10,de10lite}.
+    \item \textbf{Chương 3 -- Thực hiện Reed--Solomon trên FPGA:} Đặc tả kiến trúc RTL gồm 21 tệp Verilog trong \texttt{top\_de10\_lite}, các khối số học $\text{GF}(256)$, \texttt{rs\_encoder}, \texttt{rs\_decoder} 6 module con và ngoại vi giao tiếp; cơ chế kiểm thử của 10 testbench độc lập đạt \textbf{105.139} lượt kiểm tra ($0$ lỗi), cấu trúc dạng sóng \texttt{wave.do}, kết quả tổng hợp Quartus Prime \texttt{25.1std.0} và quy trình thực nghiệm trên phần cứng~\cite{quartussta,mathworksrs}.
+\end{itemize}
+
+\begingroup
+\let\clearpage\relax
+\footnotesize
+\linespread{1.02}\selectfont
+\setlength{\parskip}{0pt}
+\titlespacing*{\chapter}{0pt}{4pt}{4pt}
+\tableofcontents
+\vspace{0.35em}
+\listoftables
+\vspace{0.35em}
+\listoffigures
+\endgroup
+
+% =============================================================================
+% CHUONG 1 (ARABIC PAGE NUMBERING)
+% =============================================================================
+\clearpage
+\pagenumbering{arabic}
+
+\chapter{Tổng quan về Thuật toán Reed--Solomon, Mã hóa và Giải mã}
+
+Chương này trình bày cơ sở toán học trường hữu hạn $\text{GF}(256)$, hệ thống 14 tham số chuẩn, kiến trúc bộ mã hóa LFSR systematic, chuỗi giải thuật giải mã 5 giai đoạn và mô hình tham chiếu Python (\texttt{model/}). Toàn bộ ký hiệu, thứ tự hệ số đa thức và test vector tuân thủ \texttt{rtl/include/rs\_params.vh} và các đặc tả trong \texttt{docs/}.
+
+% -----------------------------------------------------------------------------
+\section{Tổng quan về mã kiểm soát lỗi Reed-Solomon}
+% -----------------------------------------------------------------------------
+
+Mã Reed--Solomon (RS), do I.~S.~Reed và G.~Solomon đề xuất năm 1960~\cite{reed1960}, thuộc họ mã khối tuyến tính tuần hoàn không nhị phân trên trường hữu hạn $\text{GF}(q)$, phổ biến nhất là $\text{GF}(2^m)$ với mỗi phần tử (symbol) rộng $m$ bit~\cite{lincostello2004,morelos2006}. Khác với mã Hamming hay BCH nhị phân thao tác trên từng bit đơn lẻ, bộ mã hóa $\text{RS}(n, k)$ gom $k$ symbol dữ liệu nguồn ($km$ bit) và bổ sung $r = n - k$ symbol kiểm tra (\textit{parity}) để tạo từ mã dài $n$ symbol ($nm$ bit) với tỷ lệ mã $R_c = k/n$.
+
+Mã RS đạt dấu bằng trong \textbf{giới hạn Singleton} (\textit{Singleton bound})~\cite{lincostello2004}:
+\begin{equation}
+    d_{\min} = n - k + 1 = r + 1,
+    \label{eq:mds-dmin}
+\end{equation}
+nên thuộc lớp mã phân tách khoảng cách tối đa (\textit{Maximum Distance Separable -- MDS}). Do đó, mã phát hiện được tối đa $d_{\min} - 1 = r$ lỗi symbol và sửa chắc chắn mọi tổ hợp lỗi không biết trước vị trí có số lượng symbol sai không vượt quá:
+\begin{equation}
+    t = \left\lfloor \frac{d_{\min} - 1}{2} \right\rfloor = \left\lfloor \frac{n - k}{2} \right\rfloor = \left\lfloor \frac{r}{2} \right\rfloor.
+    \label{eq:rs-t-cap}
+\end{equation}
+Với cấu hình $\text{RS}(15,11)$ trên $\text{GF}(256)$ ($m = 8$), mỗi khối gồm $K = 11$ byte dữ liệu ($88\text{ bit}$) và $R = 4$ byte parity ($32\text{ bit}$), tạo thành từ mã $N = 15$ byte ($120\text{ bit}$) có $R_c = 11/15 \approx 73{,}33\%$, $d_{\min} = 5$ và $T = 2$ symbol lỗi (dữ liệu hoặc parity). Phiên bản hiện tại chỉ giải mã lỗi ngẫu nhiên chưa biết vị trí (chưa hỗ trợ xóa \textit{erasure}).
+
+Vì đơn vị tính lỗi là từng byte ($8\text{ bit}$), một byte bị đảo 1 bit hay hỏng cả 8 bit đều chỉ tính là 1 lỗi symbol. Khi cụm nhiễu bắc cầu qua ranh giới hai byte liền kề, mọi chuỗi lỗi cụm dài không quá $(T - 1)m + 1 = 9\text{ bit}$ đều ảnh hưởng tối đa $T = 2$ symbol nên luôn được $\text{RS}(15,11)$ sửa đúng (Bảng~\ref{tab:bit-vs-symbol}).
+
+\begin{table}[!htb]
+    \centering
+    \caption{So sánh góc nhìn lỗi bit và lỗi symbol đối với cấu hình $\text{RS}(15,11)$ trên $\text{GF}(256)$}
+    \label{tab:bit-vs-symbol}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\centering\arraybackslash}p{2.2cm} >{\centering\arraybackslash}p{2.4cm} X@{}}
+        \toprule
+        \textbf{Kịch bản nhiễu trên kênh} & \textbf{Số bit sai} & \textbf{Số symbol sai} & \textbf{Khả năng xử lý của $\text{RS}(15,11)$} \\
+        \midrule
+        1 bit lỗi đơn tại 1 byte & $1$ bit & $1$ symbol & Sửa đúng $100\%$ ($1 \le T$) \\
+        1 byte hỏng toàn bộ 8 bit & $8$ bit & $1$ symbol & Sửa đúng $100\%$ ($1 \le T$) \\
+        Lỗi cụm dài $9\text{ bit}$ bất kỳ & $\le 9$ bit & $\le 2$ symbol & Sửa đúng $100\%$ (tối đa $2$ byte kề nhau) \\
+        2 byte bất kỳ đều hỏng hết & $16$ bit & $2$ symbol & Sửa đúng $100\%$ ($2 \le T$) \\
+        3 byte mỗi byte sai $1\text{ bit}$ & $3$ bit & $3$ symbol & Vượt ngưỡng ($3 > T$), cần phát hiện \texttt{fail} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+% -----------------------------------------------------------------------------
+\section{Cơ sở toán học trường hữu hạn \texorpdfstring{$\text{GF}(256)$}{GF(256)}}
+% -----------------------------------------------------------------------------
+
+\subsection{Xây dựng trường \texorpdfstring{$\text{GF}(2^8)$}{GF(2\textasciicircum 8)}, đa thức bất khả quy và phần tử nguyên thủy}
+
+Trường Galois $\text{GF}(256) = \text{GF}(2^8)$ gồm $256$ phần tử tương ứng một-một với các byte $a[7:0]$ từ \texttt{0x00} đến \texttt{0xFF}. Theo \texttt{docs/gf256.md} và \texttt{rtl/include/rs\_params.vh}, mỗi symbol biểu diễn trên cơ sở đa thức bậc $\le 7$ với hệ số nhị phân $a_i \in \text{GF}(2)$:
+\begin{equation}
+    a(u) = a_7 u^7 + a_6 u^6 + a_5 u^5 + a_4 u^4 + a_3 u^3 + a_2 u^2 + a_1 u + a_0.
+    \label{eq:gf-poly-basis}
+\end{equation}
+Trong toàn báo cáo, biến $u$ biểu diễn cấu trúc bit nội bộ của một symbol $\text{GF}(256)$, biến $x$ biểu diễn vị trí symbol trong từ mã và đa thức sinh $g(x)$, còn biến $z$ dùng cho đa thức syndrome $S(z)$, định vị lỗi $\Lambda(z)$ và đánh giá lỗi $\Omega(z)$.
+
+Dự án sử dụng đa thức bất khả quy nguyên thủy (\texttt{GF\_PRIM\_POLY = 9'h11D}) và phần tử nguyên thủy (\texttt{GF\_ALPHA = 8'h02}):
+\begin{equation}
+    p(u) = u^8 + u^4 + u^3 + u^2 + 1 \;\longleftrightarrow\; \texttt{9'h11D}, \qquad \alpha = u \;\longleftrightarrow\; \texttt{0x02}.
+    \label{eq:prim-poly}
+\end{equation}
+Vì $p(u) \equiv 0 \pmod{p(u)}$ trên $\text{GF}(2)$ (nơi $+1 \equiv -1$), ta có quan hệ rút gọn:
+\begin{equation}
+    u^8 \equiv u^4 + u^3 + u^2 + 1 \pmod{p(u)}.
+    \label{eq:u8-reduce}
+\end{equation}
+Khi nhân byte với $u$ (dịch trái $1\text{ bit}$), nếu trước khi dịch có $a[7] = 1$, hạng tử $u^8$ tràn khỏi thanh ghi 8 bit; bỏ bit bậc 8 kết hợp XOR với phần thấp \texttt{POLY\_LOW = 8'h1D} (\texttt{8'b0001\_1101}) khôi phục đúng đồng dư \eqref{eq:u8-reduce}. Không được thay phép chia đa thức modulo $p(u)$ bằng toán tử chia dư số nguyên \texttt{\%}. Nhóm nhân $\text{GF}(256)^* = \text{GF}(256) \setminus \{0\}$ là nhóm cyclic cấp \texttt{GF\_ORDER = 255}, sinh bởi $\alpha^0, \alpha^1, \dots, \alpha^{254}$ với $\alpha^{255} = \alpha^0 = \texttt{0x01}$.
+
+\subsection{Biểu diễn phần tử theo cơ sở đa thức và dạng lũy thừa}
+
+Mỗi phần tử khác $0$ của $\text{GF}(256)$ có hai biểu diễn tương đương: dạng đa thức/byte thuận tiện cho phép cộng XOR và dạng lũy thừa $\alpha^i$ ($0 \le i \le 254$) thuận tiện cho nhân, chia và nghịch đảo theo modulo $255$. Bảng~\ref{tab:gf-poly-map} và Bảng~\ref{tab:gf-alpha-powers} liệt kê các phần tử mốc dùng để kiểm chứng bộ mã hóa và giải mã.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Ánh xạ giữa biểu diễn byte, nhị phân và đa thức trên $\text{GF}(256)$}
+    \label{tab:gf-poly-map}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{} c c l X @{}}
+        \toprule
+        \textbf{Hex} & \textbf{Nhị phân (\texttt{a[7:0]})} & \textbf{Đa thức đại diện $a(u)$} & \textbf{Vai trò / Ghi chú} \\
+        \midrule
+        \texttt{0x00} & \texttt{0000\_0000} & $0$ & Phần tử không cộng tính \\
+        \texttt{0x01} & \texttt{0000\_0001} & $1$ & Đơn vị nhân ($\alpha^0 = \alpha^{255}$) \\
+        \texttt{0x02} & \texttt{0000\_0010} & $u$ & Phần tử nguyên thủy $\alpha = \alpha^1$ \\
+        \texttt{0x1D} & \texttt{0001\_1101} & $u^4 + u^3 + u^2 + 1$ & Phần thấp rút gọn ($\alpha^8 = u^8 \bmod p(u)$) \\
+        \texttt{0x80} & \texttt{1000\_0000} & $u^7$ & Phần tử tràn MSB khi nhân $\alpha$ ($\alpha^7$) \\
+        \texttt{0x8E} & \texttt{1000\_1110} & $u^7 + u^3 + u^2 + u$ & Nghịch đảo của $\alpha$: $\alpha^{-1} = \alpha^{254}$ \\
+        \texttt{0xA7} & \texttt{1010\_0111} & $u^7 + u^5 + u^2 + u + 1$ & Phần tử mẫu trong \texttt{docs/gf256.md} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\begin{table}[!htb]
+    \centering
+    \caption{Các lũy thừa $\alpha^i$ trong $\text{GF}(256)$ với $p(u) = \texttt{0x11D}$, $\alpha = \texttt{0x02}$}
+    \label{tab:gf-alpha-powers}
+    \scriptsize
+    \setlength{\tabcolsep}{3.5pt}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}ccc|ccc|ccc@{}}
+        \toprule
+        \textbf{Số mũ $i$} & \textbf{$\alpha^i$ (Hex)} & \textbf{Nhị phân} & \textbf{Số mũ $i$} & \textbf{$\alpha^i$ (Hex)} & \textbf{Nhị phân} & \textbf{Số mũ $i$} & \textbf{$\alpha^i$ (Hex)} & \textbf{Nhị phân} \\
+        \midrule
+        $0$  & \texttt{0x01} & \texttt{0000\_0001} & $10$ & \texttt{0x74} & \texttt{0111\_0100} & $150$ & \texttt{0x55} & \texttt{0101\_0101} \\
+        $1$  & \texttt{0x02} & \texttt{0000\_0010} & $11$ & \texttt{0xE8} & \texttt{1110\_1000} & $200$ & \texttt{0x1C} & \texttt{0001\_1100} \\
+        $2$  & \texttt{0x04} & \texttt{0000\_0100} & $12$ & \texttt{0xCD} & \texttt{1100\_1101} & $240$ & \texttt{0x2C} & \texttt{0010\_1100} \\
+        $3$  & \texttt{0x08} & \texttt{0000\_1000} & $13$ & \texttt{0x87} & \texttt{1000\_0111} & $241$ & \texttt{0x58} & \texttt{0101\_1000} \\
+        $4$  & \texttt{0x10} & \texttt{0001\_0000} & $14$ & \texttt{0x13} & \texttt{0001\_0011} & $250$ & \texttt{0x6C} & \texttt{0110\_1100} \\
+        $5$  & \texttt{0x20} & \texttt{0010\_0000} & $15$ & \texttt{0x26} & \texttt{0010\_0110} & $251$ & \texttt{0xD8} & \texttt{1101\_1000} \\
+        $6$  & \texttt{0x40} & \texttt{0100\_0000} & $25$ & \texttt{0x03} & \texttt{0000\_0011} & $252$ & \texttt{0xAD} & \texttt{1010\_1101} \\
+        $7$  & \texttt{0x80} & \texttt{1000\_0000} & $50$ & \texttt{0x05} & \texttt{0000\_0101} & $253$ & \texttt{0x47} & \texttt{0100\_0111} \\
+        $8$  & \texttt{0x1D} & \texttt{0001\_1101} & $100$ & \texttt{0x11} & \texttt{0001\_0001} & $254$ & \texttt{0x8E} & \texttt{1000\_1110} \\
+        $9$  & \texttt{0x3A} & \texttt{0011\_1010} & -- & -- & -- & $255$ & \texttt{0x01} & \texttt{0000\_0001} \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
+
+Trong Bảng~\ref{tab:gf-alpha-powers}, hai giá trị $\alpha^{14} = \texttt{0x13}$ và $\alpha^{241} = \texttt{0x58}$ tương ứng với vị trí lỗi $X_0$ và nghịch đảo $z_0 = X_0^{-1}$ tại chỉ số đầu khối $i = 0$ của mã $\text{RS}(15,11)$.
+
+\subsection{Chi tiết toán học và thuật toán các phép toán trên \texorpdfstring{$\text{GF}(256)$}{GF(256)}}
+
+\subsubsection{Phép cộng và phép trừ}
+Phép cộng và phép trừ trên $\text{GF}(256)$ thực hiện phép XOR từng bit, mỗi phần tử tự đối với chính nó ($a \oplus a = \texttt{0x00}$):
+\begin{equation}
+    a + b = a - b = a \oplus b, \qquad (a \oplus b)[i] = a[i] \oplus b[i] \quad (i = 0 \dots 7).
+    \label{eq:gf-add-sub}
+\end{equation}
+Trong RTL (\texttt{rtl/gf\_arithmetic/gf256\_add.v}), phép toán chỉ gồm 8 cổng XOR tổ hợp (\texttt{assign y = a \char94{} b;}) với độ trễ $0$ chu kỳ. Ví dụ: $\texttt{0x57} \oplus \texttt{0x83} = \texttt{0xD4}$ và $\texttt{0xA7} \oplus \texttt{0xA7} = \texttt{0x00}$.
+
+\subsubsection{Phép nhân (\texttt{xtime} và thuật toán dịch--XOR 8 bước)}
+Phép nhân $c(u) = \bigl(a(u) \cdot b(u)\bigr) \bmod p(u)$ khai triển theo từng bit $b_k$ của $b$:
+\begin{equation}
+    a(u) \cdot b(u) \bmod p(u) = \bigoplus_{k=0}^{7} b_k \cdot \bigl(a(u) \cdot \alpha^k \bmod p(u)\bigr),
+    \label{eq:gf-mul-shift}
+\end{equation}
+trong đó phép nhân với $\alpha = \texttt{0x02}$ được định nghĩa qua hàm $\text{xtime}(a)$ (kiểm tra $a[7]$ \textit{trước} khi dịch trái):
+\begin{equation}
+    \text{xtime}(a) =
+    \begin{cases}
+        (a \ll 1) \ \& \ \texttt{0xFF}, & \text{nếu } a[7] = 0, \\
+        \bigl((a \ll 1) \ \& \ \texttt{0xFF}\bigr) \oplus \texttt{0x1D}, & \text{nếu } a[7] = 1.
+    \end{cases}
+    \label{eq:xtime}
+\end{equation}
+Sau $8$ bước lặp $k = 0 \dots 7$ (khởi tạo $\text{prod} = \texttt{0x00}$: nếu $b[0]=1$ thì $\text{prod} \leftarrow \text{prod} \oplus a$, sau đó $a \leftarrow \text{xtime}(a)$, $b \leftarrow b \gg 1$), tích $a \cdot b$ thu được hoàn toàn bằng logic tổ hợp. Bảng~\ref{tab:mul-trace-57-83} minh họa vết 8 bước cho $\texttt{0x57} \times \texttt{0x83} = \texttt{0x31}$; tương tự cho phép nhân nghịch đảo $\texttt{0x02} \times \texttt{0x8E}$: $a$ đạt $\texttt{0x80}$ ở bước $6$ ($\text{xtime}(\texttt{0x80}) = \texttt{0x1D}$), rồi $\text{prod} = \texttt{0x1C} \oplus \texttt{0x1D} = \texttt{0x01}$ tại bước $7$. Thiết kế Verilog trong \texttt{rtl/gf\_arithmetic/gf256\_mul.v} (Listing~\ref{lst:gf256-mul}) được đối chứng vét cạn trên toàn bộ $256 \times 256 = 65.536$ cặp với \texttt{model/gf256\_model.py}.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Tính tay 8 bước thuật toán dịch--XOR cho phép nhân $\texttt{0x57} \times \texttt{0x83} = \texttt{0x31}$}
+    \label{tab:mul-trace-57-83}
+    \scriptsize
+    \setlength{\tabcolsep}{3.5pt}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}ccccccc@{}}
+        \toprule
+        \textbf{Bước $k$} & \textbf{$b[0]$} & \textbf{$a$ (Hex / Nhị phân)} & \textbf{$\text{prod}$ trước} & \textbf{$\text{prod}$ sau XOR} & \textbf{Tràn $a[7]$} & \textbf{$a_{\text{next}} = \text{xtime}(a)$} \\
+        \midrule
+        $0$ & $1$ & \texttt{0x57} (\texttt{0101\_0111}) & \texttt{0x00} & \texttt{0x57} & $0$ & \texttt{0xAE} \\
+        $1$ & $1$ & \texttt{0xAE} (\texttt{1010\_1110}) & \texttt{0x57} & \texttt{0xF9} & $1$ & $\texttt{0x5C}\oplus\texttt{0x1D}=\texttt{0x41}$ \\
+        $2$ & $0$ & \texttt{0x41} (\texttt{0100\_0001}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0x82} \\
+        $3$ & $0$ & \texttt{0x82} (\texttt{1000\_0010}) & \texttt{0xF9} & \texttt{0xF9} & $1$ & $\texttt{0x04}\oplus\texttt{0x1D}=\texttt{0x19}$ \\
+        $4$ & $0$ & \texttt{0x19} (\texttt{0001\_1001}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0x32} \\
+        $5$ & $0$ & \texttt{0x32} (\texttt{0011\_0010}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0x64} \\
+        $6$ & $0$ & \texttt{0x64} (\texttt{0110\_0100}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0xC8} \\
+        $7$ & $1$ & \texttt{0xC8} (\texttt{1100\_1000}) & \texttt{0xF9} & \texttt{0x31} & $1$ & $\texttt{0x90}\oplus\texttt{0x1D}=\texttt{0x8D}$ \\
+        \midrule
+        \multicolumn{7}{r}{\textbf{Kết quả:} $\texttt{0x57} \times \texttt{0x83} = \texttt{0xF9} \oplus \texttt{0xC8} = \texttt{0x31}$} \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
+
+\begin{lstlisting}[style=verilogstyle, caption={Triển khai mạch nhân tổ hợp 8 bước trong \texttt{rtl/gf\_arithmetic/gf256\_mul.v}}, label={lst:gf256-mul}]
+localparam [8:0] PRIM_POLY = `GF_PRIM_POLY;
+localparam [7:0] POLY_LOW  = PRIM_POLY[7:0]; // 8'h1D
+always @(*) begin
+    aa  = a;
+    acc = 8'h00;
+    for (i = 0; i < 8; i = i + 1) begin
+        if (b[i])
+            acc = acc ^ aa;
+        aa = aa[7] ? ((aa << 1) ^ POLY_LOW) : (aa << 1);
+    end
+    y = acc;
+end
+\end{lstlisting}
+
+\subsubsection{Lũy thừa, Nghịch đảo nhân và Phép chia}
+Với $a \in \text{GF}(256) \setminus \{0\}$, đẳng thức $a^{255} = 1$ cho nghịch đảo nhân duy nhất $a^{-1} = a^{254}$. Thông qua cặp bảng tra $\text{exp}[i] = \alpha^i$ và $\text{log}[\alpha^i] = i$:
+\begin{align}
+    a \cdot b &= \text{exp}\bigl[(\text{log}[a] + \text{log}[b]) \bmod 255\bigr], &
+    a^{-1}    &= \text{exp}\bigl[(255 - \text{log}[a]) \bmod 255\bigr], &
+    a / b     &= a \cdot b^{-1}.
+    \label{eq:gf-inv-lut}
+\end{align}
+Phần tử $\texttt{0x00}$ không có nghịch đảo: trong mô hình Python, \texttt{gf\_inv(0)} và chia cho $0$ phát sinh \texttt{ZeroDivisionError}; trong phần cứng, khối \texttt{gf256\_inv} bật cờ \texttt{zero\_err = 1} (\texttt{valid = 0}) để ngăn chia cho $0$ ở khối Forney. Ví dụ chuẩn: $\text{inv}(\texttt{0x02}) = \alpha^{254} = \texttt{0x8E}$, $\texttt{0x57}/\texttt{0x57} = \texttt{0x01}$.
+
+% -----------------------------------------------------------------------------
+\section{Đặc tả tham số và Thuật toán Mã hóa \texorpdfstring{$\text{RS}(15,11)$}{RS(15,11)}}
+% -----------------------------------------------------------------------------
+
+\subsection{Bảng tham số chuẩn và các phương trình liên hệ}
+
+Mọi khối RTL, testbench Verilog và mô hình Python đều dùng chung 14 hằng số định nghĩa trong \texttt{rtl/include/rs\_params.vh} (Bảng~\ref{tab:rs-14-params}). Trường số học giữ nguyên $\text{GF}(256)$ ($8\text{ bit}$/symbol) thay vì thu nhỏ về $\text{GF}(16)$.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Danh mục 14 tham số chuẩn trong \texttt{rtl/include/rs\_params.vh}}
+    \label{tab:rs-14-params}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{}>{\ttfamily}l c X@{}}
+        \toprule
+        \multicolumn{1}{@{}l}{\textbf{Macro trong header}} & \textbf{Giá trị} & \textbf{Ý nghĩa kỹ thuật} \\
+        \midrule
+        RS\_M          & \texttt{8}       & Số bit trên mỗi symbol ($1\text{ byte}$) \\
+        GF\_SIZE       & \texttt{256}     & Tổng số phần tử của trường $\text{GF}(2^8)$ \\
+        GF\_ORDER      & \texttt{255}     & Số phần tử khác $0$, cũng là độ dài từ mã cha \\
+        GF\_PRIM\_POLY & \texttt{9'h11D}  & Đa thức bất khả quy $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ \\
+        GF\_ALPHA      & \texttt{8'h02}   & Phần tử nguyên thủy $\alpha = u$ \\
+        RS\_N          & \texttt{15}      & Số symbol của một từ mã truyền ($120\text{ bit}$) \\
+        RS\_K          & \texttt{11}      & Số symbol dữ liệu gốc đầu vào ($88\text{ bit}$) \\
+        RS\_R          & \texttt{4}       & Số symbol parity ($32\text{ bit}$) \\
+        RS\_T          & \texttt{2}       & Số lỗi symbol không biết vị trí bảo đảm sửa được \\
+        RS\_FIRST\_ROOT & \texttt{0}      & Số mũ $F$ của nghiệm đầu trong đa thức sinh $g(x)$ \\
+        RS\_ROOT\_STEP & \texttt{1}       & Bước tăng số mũ giữa các nghiệm liên tiếp của $g(x)$ \\
+        RS\_PARENT\_N  & \texttt{255}     & Độ dài từ mã cha nguyên thủy chưa rút ngắn \\
+        RS\_PARENT\_K  & \texttt{251}     & Số symbol dữ liệu của từ mã cha \\
+        RS\_SHORTEN    & \texttt{240}     & Số symbol $0$ cố định bị lược bỏ ở đầu từ mã cha \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Các tham số ràng buộc lẫn nhau qua hệ phương trình:
+\begin{align}
+    \texttt{GF\_SIZE}     &= 2^{\texttt{RS\_M}} = 256, &
+    \texttt{GF\_ORDER}    &= \texttt{GF\_SIZE} - 1 = 255, \label{eq:rel-gf} \\
+    \texttt{RS\_R}        &= \texttt{RS\_N} - \texttt{RS\_K} = 4, &
+    \texttt{RS\_T}        &= \lfloor \texttt{RS\_R}/2 \rfloor = 2, \label{eq:rel-rt} \\
+    \texttt{RS\_PARENT\_N} &= \texttt{GF\_ORDER} = 255, &
+    \texttt{RS\_PARENT\_K} &= \texttt{RS\_PARENT\_N} - \texttt{RS\_R} = 251, \label{eq:rel-parent} \\
+    \texttt{RS\_SHORTEN}  &= \texttt{RS\_PARENT\_N} - \texttt{RS\_N} = 240, &
+    \texttt{RS\_SHORTEN}  &= \texttt{RS\_PARENT\_K} - \texttt{RS\_K} = 240. \label{eq:rel-shorten}
+\end{align}
+
+\subsection{Cơ sở toán học của phép rút ngắn mã (\texorpdfstring{$\text{RS}(255,251) \to \text{RS}(15,11)$}{RS(255,251) -> RS(15,11)})}
+\label{sec:shorten}
+
+Từ mã cha nguyên thủy $\text{RS}(255,251)$ trên $\text{GF}(256)$, phép \textbf{rút ngắn mã} cố định $\texttt{RS\_SHORTEN} = 240$ symbol đầu bằng \texttt{0x00} và đặt $K = 11$ symbol dữ liệu thực tế vào cuối:
+\begin{equation}
+    \tilde{m} = [\underbrace{\texttt{0x00}, \dots, \texttt{0x00}}_{240\text{ byte}}, \; m_0, m_1, \dots, m_{10}] \;\Longrightarrow\; \tilde{m}(x) = \sum_{s=0}^{10} m_s x^{10-s} = m(x).
+    \label{eq:shorten-poly}
+\end{equation}
+Do $240$ hệ số bậc cao đều bằng $0$, phần dư $p(x) = [x^4 m(x)] \bmod g(x)$ không đổi; trên mạch LFSR khởi tạo bằng $0$, 240 xung \texttt{0x00} đầu giữ thanh ghi ở $0$, nên phần cứng chỉ cần nạp đúng $11$ byte $m[0..10]$ rồi xuất từ mã $15$ byte (bảo toàn $d_{\min} \ge 5$, $T = 2$). Giữa chỉ số truyền $i \in [0, 14]$ và chỉ số mã cha $j \in [240, 254]$ tồn tại phép ánh xạ bảo toàn số mũ:
+\begin{align}
+    j &= 240 + i, &
+    254 - j &= (\texttt{RS\_PARENT\_N} - 1) - (240 + i) = 14 - i = \texttt{RS\_N} - 1 - i. \label{eq:map-exp}
+\end{align}
+Hai mốc biên gồm đầu khối $i = 0$ ($X_0 = \alpha^{14} = \texttt{0x13}$, $z_0 = X_0^{-1} = \alpha^{241} = \texttt{0x58}$) và cuối khối $i = 14$ ($X_{14} = \alpha^{0} = \texttt{0x01}$, $z_{14} = \texttt{0x01}$). Mọi nghiệm tìm thấy thuộc miền lược bỏ $j \in [0, 239]$ phải kích hoạt cờ lỗi giải mã.
+
+\subsection{Xây dựng chi tiết đa thức sinh \texorpdfstring{$g(x)$}{g(x)}}
+
+Với $F = \texttt{RS\_FIRST\_ROOT} = 0$, bước số mũ bằng $1$ và $R = 4$, đa thức sinh $g(x)$ nhận $4$ nghiệm liên tiếp $\alpha^0 = \texttt{0x01}$, $\alpha^1 = \texttt{0x02}$, $\alpha^2 = \texttt{0x04}$ và $\alpha^3 = \texttt{0x08}$:
+\begin{equation}
+    g(x) = \prod_{j=0}^{3} \bigl(x + \alpha^{F+j}\bigr) = (x + \texttt{0x01})(x + \texttt{0x02})(x + \texttt{0x04})(x + \texttt{0x08}).
+    \label{eq:gen-poly-prod}
+\end{equation}
+Khai triển tuần tự trên $\text{GF}(256)$ (cộng bằng XOR, nhân theo $p(u) = \texttt{0x11D}$):
+\begin{enumerate}
+    \item $g_1(x) = (x + \texttt{0x01})(x + \texttt{0x02}) = x^2 + \texttt{0x03}x + \texttt{0x02}$.
+    \item $g_2(x) = g_1(x)(x + \texttt{0x04}) = x^3 + (\texttt{0x04} \oplus \texttt{0x03})x^2 + ((\texttt{0x03}\cdot\texttt{0x04}) \oplus \texttt{0x02})x + (\texttt{0x02}\cdot\texttt{0x04}) = x^3 + \texttt{0x07}x^2 + \texttt{0x0E}x + \texttt{0x08}$.
+    \item $g(x) = g_2(x)(x + \texttt{0x08})$ cho các hệ số: $x^3$: $\texttt{0x08} \oplus \texttt{0x07} = \texttt{0x0F}$; $x^2$: $(\texttt{0x07}\cdot\texttt{0x08}) \oplus \texttt{0x0E} = \texttt{0x38} \oplus \texttt{0x0E} = \texttt{0x36}$; $x^1$: $(\texttt{0x0E}\cdot\texttt{0x08}) \oplus \texttt{0x08} = \texttt{0x70} \oplus \texttt{0x08} = \texttt{0x78}$; $x^0$: $\texttt{0x08}\cdot\texttt{0x08} = \texttt{0x40}$.
+\end{enumerate}
+Kết quả thu được đa thức sinh chuẩn (kiểm tra $g(\texttt{0x01}) = \texttt{0x01}\oplus\texttt{0x0F}\oplus\texttt{0x36}\oplus\texttt{0x78}\oplus\texttt{0x40} = \texttt{0x00}$):
+\begin{equation}
+    g(x) = x^4 + \texttt{0x0F}x^3 + \texttt{0x36}x^2 + \texttt{0x78}x + \texttt{0x40}, \qquad \mathbf{g} = [\texttt{0x01},\; \texttt{0x0F},\; \texttt{0x36},\; \texttt{0x78},\; \texttt{0x40}].
+    \label{eq:gen-poly-final}
+\end{equation}
+
+\subsection{Quy ước thứ tự hệ số đa thức và Mã hóa Systematic}
+
+Toàn bộ mô hình Python, testbench và RTL dùng chung quy ước lưu trữ mảng hệ số tổng hợp tại Bảng~\ref{tab:poly-order} (symbol truyền từ bậc cao đến bậc thấp, giữ nguyên thứ tự bit trong mỗi byte).
+
+\begin{table}[!htb]
+    \centering
+    \caption{Quy ước đa thức và thứ tự lưu mảng hệ số giữa Encoder, Decoder và Model}
+    \label{tab:poly-order}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{}>{\ttfamily}l l c X@{}}
+        \toprule
+        \multicolumn{1}{@{}l}{\textbf{Mảng / Đa thức}} & \textbf{Biểu thức toán học} & \textbf{Thứ tự lưu} & \textbf{Ánh xạ phần tử tại chỉ số $j$} \\
+        \midrule
+        m[0..10] & $m(x) = \sum_{j=0}^{K-1} m[j] x^{K-1-j}$ & Bậc cao trước & Hệ số của $x^{10-j}$ ($m[0]$ truyền đầu) \\
+        c[0..14], y[0..14] & $c(x) = \sum_{j=0}^{N-1} c[j] x^{N-1-j}$ & Bậc cao trước & Hệ số của $x^{14-j}$, với $y(x) = c(x) + e(x)$ \\
+        g[0..4] & $g(x) = \sum_{j=0}^{R} g[j] x^{R-j}$ & Bậc cao trước & Hệ số của $x^{4-j}$, $g[0] = \texttt{0x01}$ \\
+        parity[0..3] & $p(x) = \sum_{j=0}^{R-1} p[j] x^{R-1-j}$ & Bậc cao trước & Hệ số của $x^{3-j}$ ($p[0]$ xuất đầu) \\
+        S[0..3] & $S(z) = \sum_{j=0}^{R-1} S[j] z^j$ & Bậc thấp trước & $S[j] = y(\alpha^{F+j})$, hệ số của $z^j$ \\
+        lambda[0..L] & $\Lambda(z) = 1 + \sum_{j=1}^{L} \lambda_j z^j$ & Bậc thấp trước & Hệ số của $z^j$ ($\Lambda(0) = \texttt{0x01}$) \\
+        omega[0..3] & $\Omega(z) = \sum_{j=0}^{R-1} \omega_j z^j$ & Bậc thấp trước & Hệ số của $z^j$ trong $[S(z)\Lambda(z)] \bmod z^R$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Trong \textbf{mã hóa systematic}, $K = 11$ symbol dữ liệu giữ nguyên ở đầu từ mã, theo sau bởi $R = 4$ symbol phần dư parity:
+\begin{equation}
+    p(x) = \bigl[x^R \cdot m(x)\bigr] \bmod g(x), \qquad c(x) = x^R \cdot m(x) + p(x).
+    \label{eq:sys-codeword}
+\end{equation}
+Do $c(x)$ chia hết cho $g(x)$ trên $\text{GF}(256)$, mọi từ mã hợp lệ triệt tiêu tại tất cả $4$ nghiệm $c(\alpha^j) = 0$ ($j=0\dots 3$). Listing~\ref{lst:rs-encode} trích dẫn hàm \texttt{rs\_encode} từ \texttt{model/rs\_reference.py}.
+
+\begin{lstlisting}[style=pythonstyle, caption={Hàm mã hóa systematic \texttt{rs\_encode} trong \texttt{model/rs\_reference.py}}, label={lst:rs-encode}]
+GEN_POLY: List[int] = compute_generator_poly()
+
+def rs_encode(data: Union[List[int], bytes]) -> List[int]:
+    if len(data) != RS_K:
+        raise ValueError(f"Input data must be exactly K={RS_K} bytes (got {len(data)})")
+    for b in data:
+        if not (0 <= b <= 0xFF):
+            raise ValueError(f"Each symbol must be in 0..255 (got {b})")
+
+    work = list(data) + [0] * RS_R
+    for i in range(RS_K):
+        feedback = work[i]
+        if feedback != 0:
+            for j in range(RS_R + 1):
+                work[i + j] ^= gf_mul(feedback, GEN_POLY[j])
+
+    parity = work[-RS_R:]
+    return list(data) + parity
+\end{lstlisting}
+
+\subsection{Bộ mã hóa LFSR 4 tầng và ví dụ trên vector \texttt{vectors/no\_error/}}
+
+Mạch phần cứng \texttt{rtl/rs\_encoder/rs\_encoder.v} thực hiện \eqref{eq:sys-codeword} bằng thanh ghi dịch phản hồi tuyến tính (LFSR) 4 tầng với bốn thanh ghi \texttt{parity[3..0]} (Hình~\ref{fig:lfsr-encoder}). Trong $K=11$ chu kỳ ở \texttt{S\_DATA}, symbol $m[i]$ vừa xuất ra \texttt{data\_out}, vừa tạo $\text{fb} = m[i] \oplus \texttt{parity[0]}$ để cập nhật song song $\texttt{parity[0..2]} \leftarrow \texttt{parity[1..3]} \oplus (\text{fb}\cdot g_{1..3})$ và $\texttt{parity[3]} \leftarrow \text{fb}\cdot\texttt{0x40}$; sang pha \texttt{S\_PARITY} ($R=4$ chu kỳ), phản hồi ngắt về $0$ và dịch lần lượt \texttt{parity[0..3]} ra ngõ ra.
+
+\begin{figure}[!htb]
+    \centering
+    \resizebox{0.92\textwidth}{!}{%
+    \begin{tikzpicture}[
+        >=Stealth,
+        reg/.style={draw=primaryblue, fill=boxbg, thick, minimum width=1.22cm, minimum height=0.82cm, align=center, font=\footnotesize\bfseries},
+        add/.style={draw=primaryblue, fill=white, thick, circle, inner sep=1.4pt, font=\small\bfseries},
+        mul/.style={draw=secondaryblue, fill=codebg, thick, minimum width=0.95cm, minimum height=0.60cm, font=\ttfamily\footnotesize},
+        mux/.style={draw=primaryblue, fill=boxbg, thick, minimum width=0.90cm, minimum height=1.15cm, align=center, font=\footnotesize\bfseries},
+        junc/.style={fill=primaryblue, circle, inner sep=1.4pt}
+    ]
+        \node[mul] (m3) at (0.0, 0.0) {$\times$0x40};
+        \node[reg] (p3) at (1.50, 0.0) {\texttt{parity[3]}\\{\tiny ($x^0$)}};
+        \node[add] (a2) at (2.68, 0.0) {$\oplus$};
+        \node[reg] (p2) at (3.86, 0.0) {\texttt{parity[2]}\\{\tiny ($x^1$)}};
+        \node[add] (a1) at (5.04, 0.0) {$\oplus$};
+        \node[reg] (p1) at (6.22, 0.0) {\texttt{parity[1]}\\{\tiny ($x^2$)}};
+        \node[add] (a0) at (7.40, 0.0) {$\oplus$};
+        \node[reg] (p0) at (8.58, 0.0) {\texttt{parity[0]}\\{\tiny ($x^3$)}};
+
+        \node[mul] (m2) at (2.68, -1.15) {$\times$0x78};
+        \node[mul] (m1) at (5.04, -1.15) {$\times$0x36};
+        \node[mul] (m0) at (7.40, -1.15) {$\times$0x0F};
+
+        \node[add] (afb) at (10.55, 0.0) {$\oplus$};
+        \node[font=\footnotesize\bfseries] (din) at (10.55, 1.90) {\texttt{data\_in} ($m[i]$)};
+        \node[mux] (muxout) at (12.45, 1.10) {MUX};
+        \node[font=\footnotesize\bfseries] (dout) at (14.10, 1.10) {\texttt{data\_out}};
+
+        \draw[->, thick] (m3) -- (p3);
+        \draw[->, thick] (p3) -- (a2);
+        \draw[->, thick] (a2) -- (p2);
+        \draw[->, thick] (p2) -- (a1);
+        \draw[->, thick] (a1) -- (p1);
+        \draw[->, thick] (p1) -- (a0);
+        \draw[->, thick] (a0) -- (p0);
+        \draw[->, thick] (p0) -- (afb);
+
+        \draw[->, thick] (m2) -- (a2);
+        \draw[->, thick] (m1) -- (a1);
+        \draw[->, thick] (m0) -- (a0);
+
+        \draw[->, thick] (din) -- (afb);
+        \node[junc] at (10.55, 1.38) {};
+        \draw[->, thick] (10.55, 1.38) -- ($(muxout.west)+(0,0.28)$);
+        \node[junc] at (9.65, 0.0) {};
+        \draw[->, thick] (9.65, 0.0) |- ($(muxout.west)+(0,-0.28)$);
+        \draw[->, thick] (muxout) -- (dout);
+        \node[above=0.10cm of muxout, font=\tiny, color=mutedgray, align=center] {0: Data\\1: Parity};
+
+        \draw[thick] (afb.south) -- node[right, font=\tiny, color=secondaryblue] {\texttt{fb} (\texttt{0} khi \texttt{S\_PARITY})} (10.55, -2.05);
+        \draw[->, thick] (10.55, -2.05) -| (m3.south);
+        \node[junc] at (2.68, -2.05) {};
+        \node[junc] at (5.04, -2.05) {};
+        \node[junc] at (7.40, -2.05) {};
+        \draw[->, thick] (2.68, -2.05) -- (m2.south);
+        \draw[->, thick] (5.04, -2.05) -- (m1.south);
+        \draw[->, thick] (7.40, -2.05) -- (m0.south);
+        \node[below=0.06cm] at (5.04, -2.05) {\footnotesize\color{primaryblue} \texttt{feedback} $= \texttt{data\_in} \oplus \texttt{parity[0]}$};
+    \end{tikzpicture}%
+    }
+    \caption{Sơ đồ khối bộ mã hóa systematic LFSR 4 tầng với hệ số $[\texttt{0x40}, \texttt{0x78}, \texttt{0x36}, \texttt{0x0F}]$}
+    \label{fig:lfsr-encoder}
+\end{figure}
+
+Với đầu vào $\mathbf{m} = [\texttt{00}, \texttt{01}, \dots, \texttt{0A}]$ trong \texttt{vectors/no\_error/input\_data.hex}, Bảng~\ref{tab:lfsr-trace} ghi lại trạng thái qua 11 chu kỳ; kết thúc chu kỳ $10$, thanh ghi giữ 4 byte parity \texttt{C0 8F 28 6C}, tạo thành từ mã 15 byte trùng khớp \texttt{vectors/no\_error/encoded\_data.hex} (syndrome $S = [\texttt{00}, \texttt{00}, \texttt{00}, \texttt{00}]$).
+
+\begin{table}[!htb]
+    \centering
+    \caption{Diễn biến từng chu kỳ của bộ mã hóa LFSR 4 tầng cho vector \texttt{vectors/no\_error/}}
+    \label{tab:lfsr-trace}
+    \scriptsize
+    \setlength{\tabcolsep}{4pt}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}cccccc@{}}
+        \toprule
+        \textbf{Chu kỳ $i$} & \textbf{\texttt{data\_in}} & \textbf{\texttt{parity[0..3]} trước} & \textbf{\texttt{fb}} & \textbf{Tích $[\texttt{0F},\texttt{36},\texttt{78},\texttt{40}]\cdot\texttt{fb}$} & \textbf{\texttt{parity[0..3]} sau} \\
+        \midrule
+        $0$  & \texttt{00} & \texttt{00 00 00 00} & \texttt{00} & \texttt{00 00 00 00} & \texttt{00 00 00 00} \\
+        $1$  & \texttt{01} & \texttt{00 00 00 00} & \texttt{01} & \texttt{0F 36 78 40} & \texttt{0F 36 78 40} \\
+        $2$  & \texttt{02} & \texttt{0F 36 78 40} & \texttt{0D} & \texttt{4B 43 62 67} & \texttt{7D 3B 22 67} \\
+        $3$  & \texttt{03} & \texttt{7D 3B 22 67} & \texttt{7E} & \texttt{B0 D1 E9 F6} & \texttt{8B F3 8E F6} \\
+        $4$  & \texttt{04} & \texttt{8B F3 8E F6} & \texttt{8F} & \texttt{86 2D 44 60} & \texttt{75 A3 B2 60} \\
+        $5$  & \texttt{05} & \texttt{75 A3 B2 60} & \texttt{70} & \texttt{EA C8 03 51} & \texttt{49 7A 63 51} \\
+        $6$  & \texttt{06} & \texttt{49 7A 63 51} & \texttt{4F} & \texttt{B2 2E F9 2A} & \texttt{C8 4D A8 2A} \\
+        $7$  & \texttt{07} & \texttt{C8 4D A8 2A} & \texttt{CF} & \texttt{61 2C 2F AD} & \texttt{2C 84 05 AD} \\
+        $8$  & \texttt{08} & \texttt{2C 84 05 AD} & \texttt{24} & \texttt{C1 56 46 F5} & \texttt{45 53 EB F5} \\
+        $9$  & \texttt{09} & \texttt{45 53 EB F5} & \texttt{4C} & \texttt{A3 74 71 EA} & \texttt{F0 9F 84 EA} \\
+        $10$ & \texttt{0A} & \texttt{F0 9F 84 EA} & \texttt{FA} & \texttt{5F 0B C2 6C} & \texttt{C0 8F 28 6C} \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
+
+\section{Giải thuật Giải mã Reed--Solomon 5 giai đoạn}
+
+Bộ giải mã $\text{RS}(15,11)$ nhận khối $y = [y_0, \dots, y_{14}]$ trên $\text{GF}(2^8)$ ($p(u) = \texttt{9'h11D}$, $\alpha = \texttt{0x02}$, $F = 0$, $d_{\min} = 5$, $T = 2$). Các đa thức truyền $c(x), y(x)$ lưu bậc cao trước ($y_0$ ứng với $x^{14}$), còn các đa thức giải mã $S(z), \Lambda(z), \Omega(z)$ lưu bậc thấp trước (hệ số tự do tại chỉ số $0$).
+
+\subsection{Lưu đồ tổng quát quá trình giải mã}
+
+Hình~\ref{fig:rs_decode_flow} mô tả quy trình giải mã 5 giai đoạn gồm nhánh rẽ nhanh (\textit{Fast-path}) ngay sau Syndrome khi $S = 0$ và chuỗi kiểm tra đa tầng (bậc $\Lambda$, số nghiệm Chien trong $[0,14]$, $\Lambda'(z_i) \neq 0$, và tái tính syndrome \textit{Re-verify}) để phát hiện vượt ngưỡng $T = 2$.
+
+\begin{figure}[!htb]
+\centering
+\resizebox{0.82\textwidth}{!}{%
+\begin{tikzpicture}[>=stealth]
+    \node[draw, rectangle, rounded corners=2pt, fill=blue!6, minimum width=5.4cm, minimum height=0.52cm, align=center, font=\scriptsize] (load) at (0, 0) {\textbf{Nhận khối}: Bộ đệm $N=15$ symbol $y[0..14]$};
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.55cm, align=center, font=\scriptsize] (syn) at (0, -0.88) {\textbf{GĐ 1 --- Syndrome}: $S_j = y(\alpha^j)$ (Horner, $j=0..3$)};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -1.42) -- (2.20, -1.94) -- (0, -2.46) -- (-2.20, -1.94) -- cycle;
+    \node[align=center, font=\scriptsize\bfseries] at (0, -1.94) {$S_0 = S_1 =$ \\ $S_2 = S_3 = 0$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=green!10, draw=green!55!black, minimum width=3.3cm, minimum height=0.76cm, align=center, font=\scriptsize] (fast) at (4.65, -1.94) {\textbf{Nhánh Fast-path}:\\Giữ nguyên $y[0..14]$\\(\texttt{err\_cnt=0, fail=0})};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.54cm, align=center, font=\scriptsize] (bm) at (0, -3.02) {\textbf{GĐ 2 --- Berlekamp--Massey}: Tìm $\Lambda(z)$ và bậc $L$};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -3.56) -- (2.25, -4.08) -- (0, -4.60) -- (-2.25, -4.08) -- cycle;
+    \node[align=center, font=\scriptsize] at (0, -4.08) {$L=0$ hay $L>2$\\hay $\deg(\Lambda)\neq L$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.52cm, align=center, font=\scriptsize] (omega) at (0, -5.12) {\textbf{GĐ 3 --- Error Evaluator}: $\Omega(z) = [S(z)\Lambda(z)] \bmod z^4$};
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.52cm, align=center, font=\scriptsize] (chien) at (0, -5.94) {\textbf{GĐ 4 --- Chien Search}: Quét $i=0..14$, tìm $\Lambda(z_i)=0$};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -6.48) -- (2.20, -6.98) -- (0, -7.48) -- (-2.20, -6.98) -- cycle;
+    \node[align=center, font=\scriptsize] at (0, -6.98) {Số nghiệm\\tìm được $= L$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.54cm, align=center, font=\scriptsize] (forney) at (0, -8.04) {\textbf{GĐ 5a --- Forney} ($F=0$): $\Lambda'(z_i)\neq 0$; $E_i = X_i \frac{\Omega(z_i)}{\Lambda'(z_i)}$};
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.50cm, align=center, font=\scriptsize] (corr) at (0, -8.84) {\textbf{GĐ 5b --- Error Corrector}: $c'_i = y_i \oplus E_i$};
+    \node[draw, rectangle, rounded corners=2pt, fill=cyan!8, minimum width=5.4cm, minimum height=0.50cm, align=center, font=\scriptsize] (rever) at (0, -9.64) {\textbf{GĐ 5c --- Re-verify}: Tính lại $S'_0..S'_3$ trên $c'[0..14]$};
+
+    \draw[fill=orange!10, draw=orange!75!black, thick] (0, -10.18) -- (2.20, -10.68) -- (0, -11.18) -- (-2.20, -10.68) -- cycle;
+    \node[align=center, font=\scriptsize\bfseries] at (0, -10.68) {$S'_0 = S'_1 =$ \\ $S'_2 = S'_3 = 0$?};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=green!12, draw=green!55!black, minimum width=5.4cm, minimum height=0.52cm, align=center, font=\scriptsize] (outok) at (0, -11.74) {\textbf{Xuất kết quả}: Từ mã $c'[0..14]$, \texttt{fail = 0}};
+
+    \node[draw, rectangle, rounded corners=2pt, fill=red!12, draw=red!70!black, minimum width=2.70cm, minimum height=1.05cm, align=center, font=\scriptsize] (failbox) at (-4.55, -6.98) {\textbf{Báo lỗi giải mã}\\\texttt{fail = 1}\\(Từ chối ứng viên)};
+
+    \draw[->, thick] (load.south) -- (syn.north);
+    \draw[->, thick] (syn.south) -- (0, -1.42);
+    \draw[->, thick] (0, -2.46) -- node[right, font=\tiny] {Không} (bm.north);
+    \draw[->, thick] (bm.south) -- (0, -3.56);
+    \draw[->, thick] (0, -4.60) -- node[right, font=\tiny] {Không} (omega.north);
+    \draw[->, thick] (omega.south) -- (chien.north);
+    \draw[->, thick] (chien.south) -- (0, -6.48);
+    \draw[->, thick] (0, -7.48) -- node[right, font=\tiny] {Có} (forney.north);
+    \draw[->, thick] (forney.south) -- (corr.north);
+    \draw[->, thick] (corr.south) -- (rever.north);
+    \draw[->, thick] (rever.south) -- (0, -10.18);
+    \draw[->, thick] (0, -11.18) -- node[right, font=\tiny] {Có} (outok.north);
+
+    \draw[->, thick, green!50!black] (2.20, -1.94) -- node[above, font=\tiny] {Có} (fast.west);
+    \draw[->, thick, green!50!black] (fast.south) |- (outok.east);
+
+    \draw[->, thick, red!70!black] (-2.25, -4.08) -| node[above, pos=0.25, font=\tiny] {Có} (failbox.north);
+    \draw[->, thick, red!70!black] (-2.20, -6.98) -- node[above, font=\tiny] {Không} (failbox.east);
+    \draw[->, thick, red!70!black] (-2.70, -8.04) -- node[above, font=\tiny] {$\Lambda'(z_i)=0$} (-4.55, -8.04) -- (failbox.south);
+    \draw[thick, red!70!black] (-2.20, -10.68) -- node[above, font=\tiny] {Không} (-4.55, -10.68) -- (-4.55, -8.04);
+\end{tikzpicture}%
+}
+\caption{Lưu đồ giải thuật giải mã Reed--Solomon $\text{RS}(15,11)$ năm giai đoạn kèm Fast-path và Re-verify.}
+\label{fig:rs_decode_flow}
+\end{figure}
+
+\subsection{Giai đoạn 1: Tính toán Syndrome và cơ chế rẽ nhánh nhanh}
+
+Đánh giá đa thức nhận $y(x) = c(x) \oplus e(x)$ tại các nghiệm $\beta_j = \alpha^j \in \{\texttt{0x01}, \texttt{0x02}, \texttt{0x04}, \texttt{0x08}\}$ loại bỏ hoàn toàn $c(\alpha^j) = 0$:
+\begin{equation}
+S_j = y(\alpha^{F+j}) = \sum_{i=0}^{N-1} e_i \left(\alpha^j\right)^{N-1-i} = \bigoplus_{k=1}^{\nu} E_k X_k^j, \quad j = 0, 1, 2, 3,
+\label{eq:syndrome_def}
+\end{equation}
+với $\nu$ là số lỗi, $E_k = e_{i_k} \neq 0$ và $X_k = \alpha^{N-1-i_k}$, tạo nên $S(z) = S_0 \oplus S_1 z \oplus S_2 z^2 \oplus S_3 z^3$. Do $y_i$ truyền theo thứ tự $i = 0 \to 14$, mỗi kênh tính theo quy tắc Horner (Hình~\ref{fig:horner_syndrome}):
+\begin{equation}
+\text{acc}_j^{(-1)} = \texttt{0x00}, \qquad \text{acc}_j^{(i)} = \left(\text{acc}_j^{(i-1)} \odot \alpha^j\right) \oplus y_i, \qquad S_j = \text{acc}_j^{(14)}.
+\label{eq:horner_step}
+\end{equation}
+
+\begin{figure}[!htb]
+\centering
+\begin{tikzpicture}[>=stealth]
+    \node[font=\footnotesize] (yin) at (-3.5, 0) {$y_i$ ($i=0..14$)};
+    \draw[thick] (-1.75, 0) circle (0.24cm);
+    \draw[thick] (-1.75, -0.24) -- (-1.75, 0.24);
+    \draw[thick] (-1.99, 0) -- (-1.51, 0);
+    \node[draw, rectangle, rounded corners=2pt, fill=blue!8, minimum width=1.6cm, minimum height=0.68cm, align=center, font=\scriptsize] (reg) at (0.3, 0) {Thanh ghi \\ $\text{acc}_j$ (8b)};
+    \node[draw, rectangle, rounded corners=2pt, fill=orange!10, minimum width=1.7cm, minimum height=0.56cm, align=center, font=\scriptsize] (mul) at (0.3, -1.10) {Nhân hằng $\odot\,\alpha^j$};
+    \node[font=\footnotesize] (sout) at (2.9, 0) {$S_j = \text{acc}_j^{(14)}$};
+
+    \draw[->, thick] (yin.east) -- (-1.99, 0);
+    \draw[->, thick] (-1.51, 0) -- (reg.west);
+    \draw[->, thick] (reg.east) -- (sout.west);
+    \fill (1.55, 0) circle (1.5pt);
+    \draw[->, thick] (1.55, 0) |- (mul.east);
+    \draw[->, thick] (mul.west) -| (-1.75, -0.24);
+\end{tikzpicture}
+\caption{Tế bào phần cứng đánh giá Horner cho mỗi syndrome $S_j$ ($j \in \{0,1,2,3\}$).}
+\label{fig:horner_syndrome}
+\end{figure}
+
+Khi $S_0 = S_1 = S_2 = S_3 = 0$, nhánh \textit{Fast-path} xuất thẳng $y[0..14]$ (\texttt{fail = 0}). Lưu ý không bao giờ chỉ kiểm tra $S_0 = 0$ đơn lẻ vì $S_0 = \bigoplus_{k=1}^{\nu} E_k$ sẽ triệt tiêu với hai lỗi cùng biên độ (ví dụ $E_2 = E_9 = \texttt{0x37}$ cho $S = [\texttt{00}, \texttt{23}, \texttt{C6}, \texttt{59}]$ hoàn toàn sửa được).
+
+\subsection{Giai đoạn 2: Thuật toán Berlekamp--Massey (BM)}
+
+Đa thức định vị lỗi chuẩn hóa ($\Lambda(0) = 1$) cho $\nu \le T$ lỗi tại $X_1, \dots, X_\nu$ thỏa mãn Phương trình khóa~\cite{berlekamp1968,massey1969}:
+\begin{equation}
+\Lambda(z) = \prod_{k=1}^{\nu} (1 \oplus X_k z) = 1 \oplus \bigoplus_{j=1}^{\nu} \lambda_j z^j, \qquad \Lambda(z)\,S(z) \equiv \Omega(z) \pmod{z^R}.
+\label{eq:key_equation}
+\end{equation}
+Thuật toán BM lặp $n = 0 \dots R-1$ ($R=4$) với các thanh ghi $R+1 = 5$ phần tử: $\Lambda^{(0)} = B = [\texttt{0x01}]$, $L = 0$, $m = 1$, $b = \texttt{0x01}$. Tại mỗi bước $n$, độ lệch tính theo:
+\begin{equation}
+d_n = S_n \oplus \bigoplus_{j=1}^{L} \left(\lambda_j^{(n)} \odot S_{n-j}\right).
+\label{eq:bm_discrepancy}
+\end{equation}
+\begin{itemize}
+    \item Nếu $d_n = 0$: giữ nguyên $\Lambda, L, B, b$ và tăng $m \leftarrow m + 1$.
+    \item Nếu $d_n \neq 0$: lưu $\Lambda_{\text{prev}} = \Lambda^{(n)}$, tính $\gamma = d_n \odot b^{-1}$ và cập nhật $\Lambda^{(n+1)}(z) = \Lambda^{(n)}(z) \oplus \gamma z^m B(z)$. Khi $2L \le n$, cập nhật $L \leftarrow n + 1 - L$, $B \leftarrow \Lambda_{\text{prev}}$, $b \leftarrow d_n$, $m \leftarrow 1$; ngược lại tăng $m \leftarrow m + 1$.
+\end{itemize}
+Sau vòng $n = 3$, nếu $L = 0$ (khi $S \neq 0$), $L > T = 2$, hoặc $\lambda_L = 0$, bộ giải mã dựng cờ \texttt{fail = 1}.
+
+\subsection{Giai đoạn 3: Tính đa thức đánh giá lỗi \texorpdfstring{$\Omega(z)$}{Omega(z)}}
+
+Từ~\eqref{eq:key_equation}, $\Omega(z) = [S(z)\,\Lambda(z)] \bmod z^R$ thu được bằng phép chập cắt bậc:
+\begin{equation}
+\Omega_q = \bigoplus_{j=0}^{\min(q, L)} \left(\lambda_j \odot S_{q-j}\right), \quad q = 0 \dots 3.
+\label{eq:omega_def}
+\end{equation}
+Khi mẫu lỗi thỏa $\nu = L \le 2$, ta luôn có $\deg(\Omega) < L$, nên $\Omega_L \dots \Omega_3$ đều triệt tiêu.
+
+\subsection{Giai đoạn 4: Thuật toán Tìm kiếm Chien (Chien Search)}
+
+Với cấu hình rút ngắn ($\text{RS\_SHORTEN} = 240$), tại $i \in [0, 14]$ ta có $X_i = \alpha^{14-i}$ và điểm thử $z_i = X_i^{-1} = \alpha^{241+i}$~\cite{chien1964}, quét từ $i = 0$ ($X_0 = \texttt{0x13}, z_0 = \texttt{0x58}$) đến $i = 14$ ($X_{14} = \texttt{0x01}, z_{14} = \texttt{0x01}$):
+\begin{equation}
+\Lambda(z_i) = 1 \oplus (\lambda_1 \odot z_i) \oplus (\lambda_2 \odot z_i^2) = 0, \qquad z_{i+1} = z_i \odot \alpha.
+\label{eq:chien_mapping}
+\end{equation}
+Mạch phần cứng chỉ chấp nhận khi tổng số nghiệm phân biệt trong $[0, 14]$ bằng đúng bậc $L$; mọi nghiệm rơi vào $240$ vị trí đã cắt đầu khối đều kích hoạt \texttt{fail = 1}.
+
+\subsection{Giai đoạn 5: Công thức Forney, Sửa lỗi và Kiểm tra lại (Re-verify)}
+
+Áp dụng công thức Forney với $F = 0$ (nhân thêm hệ số $X_i^{1-F} = X_i$) và đạo hàm hình thức $\Lambda'(z) = \lambda_1 \oplus \lambda_3 z^2 \oplus \dots \xrightarrow{L \le 2} \lambda_1$ trong đặc số $2$~\cite{forney1965}:
+\begin{equation}
+E_i = X_i \odot \frac{\Omega(z_i)}{\Lambda'(z_i)}, \qquad \Lambda'(z_i) \neq 0.
+\label{eq:forney_f0}
+\end{equation}
+Nếu $\Lambda'(z_i) = 0$ tại một vị trí nghiệm, bộ giải mã dựng \texttt{fail = 1}. Sau khi cập nhật $c'_i = y_i \oplus E_i$, pha \textbf{Re-verify} tính lại 4 syndrome $S'_0..S'_3$ trên $c'$: chỉ khi cả 4 bằng $0$ mới xuất $c'$ với \texttt{fail = 0}. Trường hợp $>T$ lỗi đẩy $y$ lọt vào quả cầu bán kính $T$ quanh một từ mã hợp lệ khác $\tilde{c} \neq c$ không thể phân biệt bằng $S'$ đơn lẻ; khối \texttt{result\_checker} trên demo sẽ đối chiếu thêm với dữ liệu gốc.
+
+\subsection{Ví dụ giải mã tính toán từng bước}
+
+Xét vector \texttt{vectors/two\_errors/} (dữ liệu $\mathbf{m} = [\texttt{00}..\texttt{0A}]$, parity $[\texttt{C0}, \texttt{8F}, \texttt{28}, \texttt{6C}]$, tiêm 2 lỗi biên $i=0 \oplus \texttt{55}$ và $i=14 \oplus \texttt{A6}$):
+\[
+\texttt{y = [55, 01, 02, 03, 04, 05, 06, 07, 08, 09, 0A, C0, 8F, 28, CA]}.
+\]
+Bảng~\ref{tab:worked_horner}, Bảng~\ref{tab:worked_bm} và Bảng~\ref{tab:worked_chien} ghi nhận kết quả từng chu kỳ của Syndrome ($S = [\texttt{F3}, \texttt{60}, \texttt{0D}, \texttt{24}]$), Berlekamp--Massey ($\Lambda(z) = \texttt{01} \oplus \texttt{12}z \oplus \texttt{13}z^2$, $L=2$) và Chien Search ($i=0, 14$).
+
+\begin{table}[!htb]
+\centering
+\caption{Diễn biến tích lũy Horner cho $S_0..S_3$ trên vector \texttt{two\_errors}.}
+\label{tab:worked_horner}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.96}
+\begin{tabular}{@{} c c c c c c @{}}
+\toprule
+$i$ & $y_i$ & $\text{acc}_0$ ($\beta_0=\text{01}$) & $\text{acc}_1$ ($\beta_1=\text{02}$) & $\text{acc}_2$ ($\beta_2=\text{04}$) & $\text{acc}_3$ ($\beta_3=\text{08}$) \\
+\midrule
+0  & \texttt{55} & $\texttt{00} \to \texttt{55}$ & $\texttt{00} \to \texttt{55}$ & $\texttt{00} \to \texttt{55}$ & $\texttt{00} \to \texttt{55}$ \\
+1  & \texttt{01} & $\texttt{55} \to \texttt{54}$ & $\texttt{AA} \to \texttt{AB}$ & $\texttt{49} \to \texttt{48}$ & $\texttt{92} \to \texttt{93}$ \\
+2  & \texttt{02} & $\texttt{54} \to \texttt{56}$ & $\texttt{4B} \to \texttt{49}$ & $\texttt{3D} \to \texttt{3F}$ & $\texttt{EC} \to \texttt{EE}$ \\
+3  & \texttt{03} & $\texttt{56} \to \texttt{55}$ & $\texttt{92} \to \texttt{91}$ & $\texttt{FC} \to \texttt{FF}$ & $\texttt{23} \to \texttt{20}$ \\
+4  & \texttt{04} & $\texttt{55} \to \texttt{51}$ & $\texttt{3F} \to \texttt{3B}$ & $\texttt{DB} \to \texttt{DF}$ & $\texttt{1D} \to \texttt{19}$ \\
+5  & \texttt{05} & $\texttt{51} \to \texttt{54}$ & $\texttt{76} \to \texttt{73}$ & $\texttt{5B} \to \texttt{5E}$ & $\texttt{C8} \to \texttt{CD}$ \\
+6  & \texttt{06} & $\texttt{54} \to \texttt{52}$ & $\texttt{E6} \to \texttt{E0}$ & $\texttt{65} \to \texttt{63}$ & $\texttt{26} \to \texttt{20}$ \\
+7  & \texttt{07} & $\texttt{52} \to \texttt{55}$ & $\texttt{DD} \to \texttt{DA}$ & $\texttt{91} \to \texttt{96}$ & $\texttt{1D} \to \texttt{1A}$ \\
+8  & \texttt{08} & $\texttt{55} \to \texttt{5D}$ & $\texttt{A9} \to \texttt{A1}$ & $\texttt{62} \to \texttt{6A}$ & $\texttt{D0} \to \texttt{D8}$ \\
+9  & \texttt{09} & $\texttt{5D} \to \texttt{54}$ & $\texttt{5F} \to \texttt{56}$ & $\texttt{B5} \to \texttt{BC}$ & $\texttt{8E} \to \texttt{87}$ \\
+10 & \texttt{0A} & $\texttt{54} \to \texttt{5E}$ & $\texttt{AC} \to \texttt{A6}$ & $\texttt{CA} \to \texttt{C0}$ & $\texttt{4C} \to \texttt{46}$ \\
+11 & \texttt{C0} & $\texttt{5E} \to \texttt{9E}$ & $\texttt{51} \to \texttt{91}$ & $\texttt{27} \to \texttt{E7}$ & $\texttt{0A} \to \texttt{CA}$ \\
+12 & \texttt{8F} & $\texttt{9E} \to \texttt{11}$ & $\texttt{3F} \to \texttt{B0}$ & $\texttt{BB} \to \texttt{34}$ & $\texttt{1E} \to \texttt{91}$ \\
+13 & \texttt{28} & $\texttt{11} \to \texttt{39}$ & $\texttt{7D} \to \texttt{55}$ & $\texttt{D0} \to \texttt{F8}$ & $\texttt{FC} \to \texttt{D4}$ \\
+14 & \texttt{CA} & $\texttt{39} \to \mathbf{\texttt{F3}}$ & $\texttt{AA} \to \mathbf{\texttt{60}}$ & $\texttt{C7} \to \mathbf{\texttt{0D}}$ & $\texttt{EE} \to \mathbf{\texttt{24}}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[!htb]
+\centering
+\caption{Bảng vết 4 bước lặp Berlekamp--Massey trên $S = [\texttt{F3}, \texttt{60}, \texttt{0D}, \texttt{24}]$.}
+\label{tab:worked_bm}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{} c c c c c c c c l l @{}}
+\toprule
+$n$ & $S_n$ & $d_n$ & $b_{\text{cũ}}$ & $\gamma$ & Nhánh & $L_{\text{mới}}$ & $m_{\text{mới}}$ & $B_{\text{mới}}(z)$ & $\Lambda^{(n+1)}(z)$ \\
+\midrule
+Init & --- & --- & \texttt{01} & --- & Khởi tạo & $0$ & $1$ & \texttt{[01]} & \texttt{[01]} \\
+0 & \texttt{F3} & \texttt{F3} & \texttt{01} & \texttt{F3} & $d_0\neq 0,\, 2L\le 0$ & $1$ & $1$ & \texttt{[01]} & \texttt{[01, F3]} \\
+1 & \texttt{60} & \texttt{D2} & \texttt{F3} & \texttt{E7} & $d_1\neq 0,\, 2L>1$ & $1$ & $2$ & \texttt{[01]} & \texttt{[01, 14]} \\
+2 & \texttt{0D} & \texttt{DE} & \texttt{F3} & \texttt{6B} & $d_2\neq 0,\, 2L\le 2$ & $2$ & $1$ & \texttt{[01, 14]} & \texttt{[01, 14, 6B]} \\
+3 & \texttt{24} & \texttt{FE} & \texttt{DE} & \texttt{06} & $d_3\neq 0,\, 2L>3$ & $2$ & $2$ & \texttt{[01, 14]} & \textbf{\texttt{[01, 12, 13]}} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Từ \eqref{eq:omega_def}, tính được $\Omega_0 = \texttt{F3}$, $\Omega_1 = \texttt{60} \oplus (\texttt{12}\odot\texttt{F3}) = \texttt{10}$ và $\Omega_2 = \Omega_3 = \texttt{00}$, tức $\Omega(z) = \texttt{F3} \oplus \texttt{10}z$. Quét Chien trên Bảng~\ref{tab:worked_chien} định vị đúng $i=0$ và $i=14$, sau đó Forney với $\Lambda'(z) = \lambda_1 = \texttt{12}$ trả về $E_0 = \texttt{13} \odot (\texttt{1A}\oslash\texttt{12}) = \texttt{55}$ và $E_{14} = \texttt{01} \odot (\texttt{E3}\oslash\texttt{12}) = \texttt{A6}$, khôi phục chuẩn từ mã $c' = [\texttt{00}..\texttt{0A}, \texttt{C0}, \texttt{8F}, \texttt{28}, \texttt{6C}]$ với $S' = [\texttt{00},\texttt{00},\texttt{00},\texttt{00}]$.
+
+\begin{table}[!htb]
+\centering
+\caption{Đánh giá Chien Search trên 15 vị trí $i = 0 \dots 14$ với $\Lambda(z) = \texttt{01} \oplus \texttt{12}z \oplus \texttt{13}z^2$.}
+\label{tab:worked_chien}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.96}
+\begin{tabular}{@{} c c c c c c c c l @{}}
+\toprule
+$i$ & $14-i$ & $X_i$ & $z_i$ & $z_i^2$ & $\lambda_1 \odot z_i$ & $\lambda_2 \odot z_i^2$ & $\Lambda(z_i)$ & Ghi chú \\
+\midrule
+\textbf{0} & \textbf{14} & \textbf{\texttt{13}} & \textbf{\texttt{58}} & \textbf{\texttt{90}} & \textbf{\texttt{59}} & \textbf{\texttt{58}} & \textbf{\texttt{00}} & \textbf{Nghiệm $i=0$} \\
+1 & 13 & \texttt{87} & \texttt{B0} & \texttt{7A} & \texttt{B2} & \texttt{7D} & \texttt{CE} & --- \\
+2 & 12 & \texttt{CD} & \texttt{7D} & \texttt{F5} & \texttt{79} & \texttt{E9} & \texttt{91} & --- \\
+3 & 11 & \texttt{E8} & \texttt{FA} & \texttt{F3} & \texttt{F2} & \texttt{83} & \texttt{70} & --- \\
+4 & 10 & \texttt{74} & \texttt{E9} & \texttt{EB} & \texttt{F9} & \texttt{36} & \texttt{CE} & --- \\
+5 & 9  & \texttt{3A} & \texttt{CF} & \texttt{8B} & \texttt{EF} & \texttt{D8} & \texttt{36} & --- \\
+6 & 8  & \texttt{1D} & \texttt{83} & \texttt{16} & \texttt{C3} & \texttt{47} & \texttt{85} & --- \\
+7 & 7  & \texttt{80} & \texttt{1B} & \texttt{58} & \texttt{9B} & \texttt{01} & \texttt{9B} & --- \\
+8 & 6  & \texttt{40} & \texttt{36} & \texttt{7D} & \texttt{2B} & \texttt{04} & \texttt{2E} & --- \\
+9 & 5  & \texttt{20} & \texttt{6C} & \texttt{E9} & \texttt{56} & \texttt{10} & \texttt{47} & --- \\
+10 & 4 & \texttt{10} & \texttt{D8} & \texttt{83} & \texttt{AC} & \texttt{40} & \texttt{ED} & --- \\
+11 & 3 & \texttt{08} & \texttt{AD} & \texttt{36} & \texttt{45} & \texttt{1D} & \texttt{59} & --- \\
+12 & 2 & \texttt{04} & \texttt{47} & \texttt{D8} & \texttt{8A} & \texttt{74} & \texttt{FF} & --- \\
+13 & 1 & \texttt{02} & \texttt{8E} & \texttt{47} & \texttt{09} & \texttt{CD} & \texttt{C5} & --- \\
+\textbf{14} & \textbf{0} & \textbf{\texttt{01}} & \textbf{\texttt{01}} & \textbf{\texttt{01}} & \textbf{\texttt{12}} & \textbf{\texttt{13}} & \textbf{\texttt{00}} & \textbf{Nghiệm $i=14$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Kiểm chứng Giải thuật bằng Golden Model Python và Bộ Test Vectors}
+
+\subsection{Kiến trúc mô hình tham chiếu Python trong thư mục \texttt{model/}}
+
+Thư mục \texttt{model/} cài đặt mô hình tham chiếu độc lập (\textit{Golden Model}) tuân thủ \texttt{rs\_params.vh}:
+\begin{itemize}
+    \item \textbf{\texttt{gf256\_model.py}:} Khởi tạo \texttt{EXP\_TABLE} (510 phần tử nhân đôi) và \texttt{LOG\_TABLE} (256 phần tử, \texttt{log\_table[0]=-1}) qua \texttt{\_build\_tables()}, đối chứng \texttt{gf\_mul\_shift} với \texttt{gf\_mul\_lut} trên đủ $65.536$ cặp và $255$ nghịch đảo (\texttt{ZeroDivisionError} khi chia cho $0$).
+    \item \textbf{\texttt{rs\_reference.py}:} Cài đặt \texttt{rs\_encode} cùng 6 hàm giải mã \texttt{calc\_syndromes}, \texttt{berlekamp\_massey}, \texttt{error\_evaluator}, \texttt{chien\_search}, \texttt{forney}, \texttt{rs\_decode} với đủ 5 điều kiện phát hiện thất bại ($L=0$, $L>T$, $|\text{roots}|\neq L$, $\Lambda'(z_i)=0$, \texttt{verify\_syn != 0}).
+    \item \textbf{\texttt{generate\_vectors.py}:} Sinh 5 bộ vector \texttt{\$readmemh} và tự xác thực bằng \texttt{assert} qua \texttt{rs\_decode}.
+\end{itemize}
+
+Đoạn mã~\ref{lst:gf256_core} và Đoạn mã~\ref{lst:rs_bm_decode} trích dẫn các hàm lõi trực tiếp từ tệp \texttt{model/\allowbreak gf256\_model.py} và \texttt{model/\allowbreak rs\_reference.py}.
+
+\begin{lstlisting}[style=pythonstyle, caption={Tạo bảng log/exp và phép nhân đối chứng trong \texttt{model/gf256\_model.py}}, label={lst:gf256_core}]
+def _build_tables() -> Tuple[List[int], List[int]]:
+    exp_tbl = [0] * (FIELD_ORDER * 2)
+    log_tbl = [-1] * FIELD_SIZE
+
+    cur = 1
+    for i in range(FIELD_ORDER):
+        exp_tbl[i] = cur
+        exp_tbl[i + FIELD_ORDER] = cur
+        log_tbl[cur] = i
+        carry = cur & 0x80
+        cur = ((cur << 1) & 0xFF)
+        if carry:
+            cur ^= POLY_LOW
+
+    return exp_tbl, log_tbl
+
+def gf_mul_shift(a: int, b: int) -> int:
+    if not (0 <= a <= 0xFF and 0 <= b <= 0xFF):
+        raise ValueError(f"Inputs must be in 0..255 (got a={a}, b={b})")
+
+    product = 0
+    cur_a = a
+    cur_b = b
+    for _ in range(8):
+        if cur_b & 1:
+            product ^= cur_a
+        carry = cur_a & 0x80
+        cur_a = (cur_a << 1) & 0xFF
+        if carry:
+            cur_a ^= POLY_LOW
+        cur_b >>= 1
+    return product
+\end{lstlisting}
+
+\begin{lstlisting}[style=pythonstyle, caption={Hàm Berlekamp--Massey và bộ giải mã hoàn chỉnh trong \texttt{model/rs\_reference.py}}, label={lst:rs_bm_decode}]
+def berlekamp_massey(
+    syndromes: List[int],
+    r: int = RS_R,
+    t: int = RS_T
+) -> Tuple[List[int], int]:
+    if len(syndromes) != r:
+        raise ValueError(f"Expected {r} syndromes")
+
+    C = [1] + [0] * r
+    B = [1] + [0] * r
+    L = 0
+    shift = 1
+    b = 1
+
+    for q in range(r):
+        d = syndromes[q]
+        for j in range(1, L + 1):
+            d ^= gf_mul(C[j], syndromes[q - j])
+
+        if d == 0:
+            shift += 1
+            continue
+
+        previous = C.copy()
+        scale = gf_div(d, b)
+        for j in range(r + 1 - shift):
+            C[j + shift] ^= gf_mul(scale, B[j])
+
+        if 2 * L <= q:
+            L = q + 1 - L
+            B = previous
+            b = d
+            shift = 1
+        else:
+            shift += 1
+
+    return C[: L + 1], L
+
+def rs_decode(
+    received: Union[List[int], bytes],
+    n: int = RS_N,
+    k: int = RS_K,
+    r: int = RS_R,
+    t: int = RS_T,
+    first_root: int = RS_FIRST_ROOT
+) -> Tuple[List[int], int, bool]:
+    if len(received) != n:
+        raise ValueError(f"Received word must have N={n} bytes")
+
+    syn = calc_syndromes(received, r=r, first_root=first_root)
+    if all(s == 0 for s in syn):
+        return list(received), 0, False
+
+    lambda_poly, l_deg = berlekamp_massey(syn, r=r, t=t)
+    if l_deg == 0 or l_deg > t:
+        return list(received), l_deg, True
+
+    omega_poly = error_evaluator(syn, lambda_poly, l_deg, r=r)
+    roots = chien_search(lambda_poly, l_deg, n=n)
+    if len(roots) != l_deg:
+        return list(received), l_deg, True
+
+    try:
+        err_vals = forney(lambda_poly, omega_poly, roots, first_root=first_root)
+    except ZeroDivisionError:
+        return list(received), l_deg, True
+
+    corrected = list(received)
+    for pos, err_val in err_vals.items():
+        corrected[pos] ^= err_val
+
+    verify_syn = calc_syndromes(corrected, r=r, first_root=first_root)
+    if any(s != 0 for s in verify_syn):
+        return list(received), l_deg, True
+
+    return corrected, len(roots), False
+\end{lstlisting}
+
+\subsection{Phân tích 5 kịch bản kiểm chứng trong thư mục \texttt{vectors/}}
+
+Bốn kịch bản giải mã thành công (\texttt{no\_error/}, \texttt{one\_error/}, \texttt{two\_errors/}, \texttt{parity\_error/}) đều chứa 4 tệp chuẩn \texttt{input\_data.hex}, \texttt{encoded\_data.hex}, \texttt{corrupted\_\allowbreak data.hex} và \texttt{expected\_\allowbreak codeword.hex} (không có \texttt{case\_\allowbreak info.json}). Riêng kịch bản \texttt{beyond\_\allowbreak capacity/} (3 lỗi vượt ngưỡng) chứa \texttt{case\_\allowbreak info.json} để khai báo kỳ vọng thất bại thay vì \texttt{expected\_\allowbreak codeword.hex}. Bảng~\ref{tab:vectors_hex_data} và Bảng~\ref{tab:vectors_trace_summary} tổng hợp dữ liệu và các đại lượng giải mã tương ứng.
+
+\begin{table}[!htb]
+\centering
+\caption{Dữ liệu vector kiểm thử thực tế (hệ hex) trích xuất từ 5 kịch bản trong thư mục \texttt{vectors/}.}
+\label{tab:vectors_hex_data}
+\scriptsize
+\renewcommand{\arraystretch}{1.04}
+\begin{tabularx}{\textwidth}{@{} l X @{}}
+\toprule
+\textbf{Kịch bản} & \textbf{Dữ liệu thực tế trong các tệp \texttt{.hex} / \texttt{case\_info.json}} \\
+\midrule
+\texttt{no\_error/} &
+\textbf{input\_data}: \texttt{00 01 02 03 04 05 06 07 08 09 0A} \\
+(0 lỗi) & \textbf{encoded / corrupted / expected}: \texttt{00 01 02 03 04 05 06 07 08 09 0A C0 8F 28 6C} \\
+\midrule
+\texttt{one\_error/} &
+\textbf{input\_data}: \texttt{10 21 32 43 54 65 76 87 98 A9 BA} \\
+(1 lỗi: $i=3 \oplus \texttt{A5}$) & \textbf{encoded / expected}: \texttt{10 21 32 43 54 65 76 87 98 A9 BA 61 CE 07 A3} \\
+& \textbf{corrupted\_data}: \texttt{10 21 32 \textbf{E6} 54 65 76 87 98 A9 BA 61 CE 07 A3} \\
+\midrule
+\texttt{two\_errors/} &
+\textbf{input\_data}: \texttt{00 01 02 03 04 05 06 07 08 09 0A} \\
+(2 lỗi biên: $i=0 \oplus \texttt{55}$, & \textbf{encoded / expected}: \texttt{00 01 02 03 04 05 06 07 08 09 0A C0 8F 28 6C} \\
+$i=14 \oplus \texttt{A6}$) & \textbf{corrupted\_data}: \texttt{\textbf{55} 01 02 03 04 05 06 07 08 09 0A C0 8F 28 \textbf{CA}} \\
+\midrule
+\texttt{parity\_error/} &
+\textbf{input\_data}: \texttt{AA 55 AA 55 AA 55 AA 55 AA 55 AA} \\
+(2 lỗi parity: $i=11 \oplus \texttt{3C}$, & \textbf{encoded / expected}: \texttt{AA 55 AA 55 AA 55 AA 55 AA 55 AA 82 15 21 E3} \\
+$i=13 \oplus \texttt{C3}$) & \textbf{corrupted\_data}: \texttt{AA 55 AA 55 AA 55 AA 55 AA 55 AA \textbf{BE} 15 \textbf{E2} E3} \\
+\midrule
+\texttt{beyond\_capacity/} &
+\textbf{input\_data}: \texttt{11 22 33 44 55 66 77 88 99 AA BB} \\
+(3 lỗi: $i=1\oplus\texttt{45}, 5\oplus\texttt{67}$, & \textbf{encoded\_data}: \texttt{11 22 33 44 55 66 77 88 99 AA BB 73 9D 91 7F} \\
+$i=9\oplus\texttt{89}$) & \textbf{corrupted\_data}: \texttt{11 \textbf{67} 33 44 55 \textbf{01} 77 88 99 \textbf{23} BB 73 9D 91 7F} \\
+& \textbf{case\_info.json}: \texttt{fail\_flag\_expected=true}, \texttt{decoder\_result\_fail=true}, \texttt{lambda\_degree=2} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[!htb]
+\centering
+\caption{Các đại lượng giải mã trung gian của Golden Model cho 5 bộ test vector.}
+\label{tab:vectors_trace_summary}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{} l c c c c c c @{}}
+\toprule
+Kịch bản & $S = [S_0..S_3]$ & $\Lambda(z)$ & $L$ & $\Omega(z)$ & Nghiệm Chien $(i, X_i, z_i)$ & Giá trị $E_i$ \& \texttt{fail} \\
+\midrule
+\texttt{no\_error} & \texttt{[00,00,00,00]} & --- & 0 & --- & Bỏ qua (Fast-path) & $0$ lỗi, \texttt{fail=0} \\
+\texttt{one\_error} & \texttt{[A5,0E,59,45]} & \texttt{[01,E8]} & 1 & \texttt{[A5]} & $(3, \texttt{E8}, \texttt{FA})$ & $E_3=\texttt{A5}$, \texttt{fail=0} \\
+\texttt{two\_errors} & \texttt{[F3,60,0D,24]} & \texttt{[01,12,13]} & 2 & \texttt{[F3,10]} & $(0,\texttt{13},\texttt{58}), (14,\texttt{01},\texttt{01})$ & $E_0=\texttt{55}, E_{14}=\texttt{A6}$, \texttt{fail=0} \\
+\texttt{parity\_error} & \texttt{[FF,66,90,E7]} & \texttt{[01,0A,10]} & 2 & \texttt{[FF,2E]} & $(11,\texttt{08},\texttt{AD}), (13,\texttt{02},\texttt{8E})$ & $E_{11}=\texttt{3C}, E_{13}=\texttt{C3}$, \texttt{fail=0} \\
+\texttt{beyond\_capacity} & \texttt{[AB,98,6D,5F]} & \texttt{[01,72,6F]} & 2 & \texttt{[AB,E0]} & $\emptyset$ (0 nghiệm $\in [0,14]$) & Chặn bởi Chien, \texttt{fail=1} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Trong 5 kịch bản trên, đáng chú ý nhất là \texttt{parity\_error} (lỗi hoàn toàn trong parity vẫn phải được sửa để Re-verify đưa $S' \to 0$) và \texttt{beyond\_capacity} (BM trả về $\Lambda(z) = \texttt{01} \oplus \texttt{72}z \oplus \texttt{6F}z^2$ có $L = 2 \le T$ không bị chặn ở BM, nhưng hai nghiệm $j = 63, 129$ rơi vào 240 vị trí rút ngắn đầu nên bị Chien Search giới hạn trên $[0, 14]$ loại bỏ và kích hoạt \texttt{fail = 1}). Các mô hình toán học và bộ vector này là chuẩn đối chứng trực tiếp cho việc khảo sát bo mạch mục tiêu ở Chương~2 và thiết kế RTL, kiểm chứng trên FPGA ở Chương~3.
+
+\chapter{Giới thiệu về Board FPGA Terasic DE10-Lite}
+\label{ch:de10-lite}
+
+Hệ thống mã hóa -- giải mã Reed--Solomon $\text{RS}(15,11)$ được triển khai và kiểm chứng phần cứng trên kit phát triển \textbf{Terasic DE10-Lite} sử dụng vi mạch FPGA \textbf{Intel MAX 10} mã \texttt{10M50DAF484C7G} \cite{de10lite}. Chương này trình bày cấu trúc tổng quan của bo mạch, kiến trúc phần tử logic và bộ nhớ bên trong vi mạch MAX 10, nguyên lý giao tiếp điện -- logic của các khối ngoại vi cùng quy hoạch gán 32 chân tín hiệu và ràng buộc thời gian tĩnh.
+
+\section{Tổng quan kiến trúc Kit Terasic DE10-Lite}
+\label{sec:de10-overview}
+
+\textbf{Terasic DE10-Lite} là nền tảng phát triển tích hợp sẵn vi mạch nạp \textbf{USB-Blaster II} qua cổng USB Type-B, vừa cấp nguồn 5\,V cho bo mạch (hạ áp nội bộ xuống $3{,}3\text{ V}$, $2{,}5\text{ V}$ và nguồn lõi $1{,}20\text{ V}$), vừa cho phép nạp tệp cấu hình \texttt{ReedSolomon.sof} trực tiếp qua giao thức JTAG \cite{de10lite}. Bộ dao động thạch anh 50\,MHz nối tới chân \texttt{MAX10\_CLK1\_50} (\texttt{PIN\_P11}, Bank~3) cung cấp xung nhịp đơn duy nhất (\textit{single clock domain}) cho toàn mạch.
+
+Nhóm ngoại vi giao tiếp người dùng trên bo mạch được khai thác trong đồ án gồm 10 công tắc trượt \texttt{SW[9:0]}, 2 nút nhấn \texttt{KEY[1:0]}, 3 trong số 10 LED đơn \texttt{LEDR[2:0]} và 2 trong số 6 LED 7 đoạn \texttt{HEX1:HEX0}. Các phân hệ ngoại vi khác như SDRAM 64\,MB, cảm biến gia tốc, đầu ra VGA hay header mở rộng \texttt{JP1} (có cặp chân \texttt{PIN\_V10}, \texttt{PIN\_W10} dự phòng cho UART mở rộng) chưa được sử dụng trong cấu hình hiện tại. Hình~\ref{fig:de10-overview} tóm tắt sơ đồ kết nối giữa vi mạch MAX 10 và các ngoại vi phục vụ hệ thống $\text{RS}(15,11)$.
+
+\begin{figure}[!htb]
+    \centering
+    \resizebox{0.94\textwidth}{!}{%
+    \begin{tikzpicture}[>=stealth, font=\footnotesize]
+        % Khung FPGA trung tam
+        \draw[thick, rounded corners=4pt, fill=blue!4] (4.8, 0.2) rectangle (10.3, 5.9);
+        \node[font=\small\bfseries, align=center] at (7.55, 5.45) {Intel MAX 10 FPGA\\(\texttt{10M50DAF484C7G})};
+
+        % Khoi thiet ke ben trong FPGA
+        \draw[thick, rounded corners=3pt, fill=white] (5.25, 1.4) rectangle (9.85, 4.7);
+        \node[font=\bfseries] at (7.55, 4.35) {Hệ thống \texttt{top\_de10\_lite}};
+        \node[align=center, font=\scriptsize] at (7.55, 3.55)
+            {4.599 / 49.760 LEs (9\%)\\
+             2.035 FF (4\%), 0 M9K, 0 DSP};
+        \draw[dashed, rounded corners=2pt, fill=gray!8] (5.55, 1.65) rectangle (9.55, 2.65);
+        \node[align=center, font=\scriptsize] at (7.55, 2.15)
+            {Bộ nhớ Flash nội CFM (\textit{Instant-On})\\\texttt{SINGLE IMAGE WITH ERAM}};
+
+        % Khoi ngoai vi ben trai
+        \draw[thick, rounded corners=3pt, fill=orange!10] (0.0, 4.7) rectangle (3.6, 5.85);
+        \node[align=center] at (1.8, 5.27)
+            {\textbf{USB-Blaster II \& 5\,V}\\USB Type-B, JTAG \texttt{.sof}};
+
+        \draw[thick, rounded corners=3pt, fill=green!8] (0.0, 3.3) rectangle (3.6, 4.35);
+        \node[align=center] at (1.8, 3.82)
+            {\textbf{Dao động 50\,MHz}\\\texttt{PIN\_P11} ($T=20{,}000\text{ ns}$)};
+
+        \draw[thick, rounded corners=3pt, fill=yellow!12] (0.0, 1.8) rectangle (3.6, 2.95);
+        \node[align=center] at (1.8, 2.37)
+            {\textbf{2 Nút nhấn \texttt{KEY[1:0]}}\\\textit{Schmitt Trigger}, tích cực thấp};
+
+        \draw[thick, rounded corners=3pt, fill=yellow!12] (0.0, 0.25) rectangle (3.6, 1.4);
+        \node[align=center] at (1.8, 0.82)
+            {\textbf{10 Switch \texttt{SW[9:0]}}\\\texttt{3.3-V LVTTL}, nhập/chế độ};
+
+        % Khoi ngoai vi ben phai
+        \draw[thick, rounded corners=3pt, fill=red!8] (11.5, 4.25) rectangle (15.1, 5.55);
+        \node[align=center] at (13.3, 4.9)
+            {\textbf{3 LED đơn \texttt{LEDR[2:0]}}\\Báo \textit{Busy / Done / Fail}};
+
+        \draw[thick, rounded corners=3pt, fill=red!8] (11.5, 2.25) rectangle (15.1, 3.8);
+        \node[align=center] at (13.3, 3.02)
+            {\textbf{LED 7 đoạn \texttt{HEX1:HEX0}}\\Anode chung, 8-bit (\texttt{DP=1})};
+
+        \draw[dashed, rounded corners=3pt, fill=gray!8] (11.5, 0.35) rectangle (15.1, 1.7);
+        \node[align=center, font=\scriptsize] at (13.3, 1.02)
+            {\textbf{Header JP1 (dự phòng)}\\UART tùy chọn \texttt{PIN\_V10, W10}};
+
+        % Ket noi
+        \draw[->, thick] (3.6, 5.27) -- node[above, font=\scriptsize]{JTAG} (4.8, 5.27);
+        \draw[->, thick] (3.6, 3.82) -- node[above, font=\scriptsize]{Clk} (5.25, 3.82);
+        \draw[->, thick] (3.6, 2.37) -- node[above, font=\scriptsize]{2 bit} (5.25, 2.37);
+        \draw[->, thick] (3.6, 0.82) -- (4.25, 0.82) |- node[pos=0.72, above, font=\scriptsize]{10 bit} (5.25, 1.9);
+
+        \draw[->, thick] (9.85, 4.3) -- (10.65, 4.3) |- node[pos=0.72, above, font=\scriptsize]{3 bit} (11.5, 4.9);
+        \draw[->, thick] (9.85, 3.02) -- node[above, font=\scriptsize]{16 bit} (11.5, 3.02);
+        \draw[<->, dashed] (10.3, 1.02) -- (11.5, 1.02);
+    \end{tikzpicture}%
+    }
+    \caption{Sơ đồ khối kết nối ngoại vi trên board Terasic DE10-Lite cho hệ thống $\text{RS}(15,11)$}
+    \label{fig:de10-overview}
+\end{figure}
+
+\section{Đặc tính kỹ thuật vi mạch FPGA Intel MAX 10 (\texttt{10M50DAF484C7G})}
+\label{sec:max10-spec}
+
+Mã linh kiện \texttt{10M50DAF484C7G} xác định đầy đủ các thông số kiến trúc của vi mạch trung tâm \cite{intelmax10}: họ FPGA \texttt{10M50} mật độ xấp xỉ 50 nghìn phần tử logic, biến thể \texttt{DA} tích hợp bộ nhớ Flash kép và hai khối ADC, kiểu đóng gói \texttt{F484} (FBGA 484 chân, hỗ trợ tối đa 360 chân I/O người dùng), dải nhiệt độ lớp ghép thương mại $0\text{--}85^{\circ}\text{C}$ cấp tốc độ 7 (\texttt{C7}) và tuân thủ chuẩn không chì \texttt{G} (RoHS6). Bảng~\ref{tab:max10-resources} tổng hợp tài nguyên danh định từ \texttt{ReedSolomon.fit.summary} và cách khai thác trong thiết kế.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Thông số tài nguyên phần cứng của vi mạch Intel MAX 10 (\texttt{10M50DAF484C7G})}
+    \label{tab:max10-resources}
+    \footnotesize
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabularx}{\textwidth}{l c X}
+        \toprule
+        \textbf{Loại tài nguyên phần cứng} & \textbf{Dung lượng tối đa} & \textbf{Mức độ và cách khai thác trong đồ án} \\
+        \midrule
+        Phần tử logic (LE) / Khối LAB & 49.760 LEs / 3.110 LABs & Dùng 4.599 LEs (9\%) trên 346 LABs (11\%) cho FSM, mạch $\text{GF}(256)$ và FF \\
+        Bộ nhớ khối nhúng (M9K) & 182 khối (1.677.312 bit) & Dùng 0\% do các bộ đệm 11/15 byte dùng thanh ghi đọc 0 chu kỳ trễ \\
+        Bộ nhân nhúng $9\times 9$-bit & 288 phần tử & Dùng 0\% do nhân $\text{GF}(256)$ tổng hợp bằng cây cổng XOR tổ hợp \\
+        Chân I/O người dùng (FBGA-484) & 360 chân & Dùng 32 chân (13 vào, 19 ra -- chiếm 9\%) trên Bank 3, 6, 7 \\
+        PLL / Flash nội / ADC & 4 PLL / 1 UFM / 2 ADC & Chạy trực tiếp 50\,MHz (0 PLL, 0 ADC); cấu hình CFM (0 UFM) \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Bên trong cấu trúc lõi của MAX 10 \cite{intelmax10}, các tài nguyên vật lý được tổ chức và ánh xạ theo những đặc điểm sau:
+\begin{itemize}
+    \item \textbf{Phần tử logic (LE) và khối LAB:} Mỗi LE gồm một bảng tra 4 ngõ vào (4-LUT), một flip-flop lập trình được kèm đường hồi tiếp đồng bộ/bất đồng bộ, chuỗi mang nhớ (\textit{carry chain}) và bộ chọn đầu ra. Một LE hỗ trợ hai chế độ: \textit{Normal} (thực hiện hàm tổ hợp 4 biến như các tầng XOR trong \texttt{gf256\_mul} và LUT nghịch đảo \texttt{gf256\_inv}) và \textit{Arithmetic} (tách 4-LUT thành hai LUT 3 biến nối tiếp chuỗi mang nhớ để tổng hợp bộ đếm như \texttt{debounce\_count} 19 bit hoặc \texttt{cycle\_counter} 32 bit). Cứ 16 LE được gom thành một khối \textbf{LAB} dùng chung đường nối cục bộ tốc độ cao (\textit{local interconnect}) và 4 đường điều khiển khối (clock, clear, enable, load). Theo \texttt{ReedSolomon.fit.rpt}, toàn thiết kế phân bổ trên 346/3.110 LAB (11\%) với mật độ trung bình 13,29 LE/LAB.
+    \item \textbf{Bộ nhớ khối M9K (182 khối):} Mỗi khối M9K cung cấp 9.216 bit RAM đồng bộ hai cổng (hoặc 8.192 bit không tính bit parity), nhưng có độ trễ đọc đồng bộ tối thiểu 1 chu kỳ xung nhịp và không hỗ trợ xóa toàn bộ mảng trong 1 chu kỳ. Trong đồ án, \texttt{u\_buf\_input} (88 bit), \texttt{u\_buf\_output} (120 bit) và ba mảng đệm bên trong \texttt{rs\_decoder} có dung lượng rất nhỏ nhưng cần cổng đọc tổ hợp 0 trễ (\texttt{rd\_data}, \texttt{chk\_data}) cũng như lệnh \texttt{clear} tức thời trong 1 chu kỳ. Vì vậy, ánh xạ bằng thanh ghi LE giúp lược bỏ hoàn toàn 182 khối M9K mà vẫn tối ưu logic điều khiển FSM.
+    \item \textbf{Khối nhân DSP $9\times 9$-bit (288 bộ):} Các bộ nhân nhúng thực hiện phép nhân số nguyên có nhớ (chuỗi mang nhớ nhị phân), không tương thích với phép nhân đa thức không mang nhớ modulo $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ trên $\text{GF}(256)$. Tổng hợp \texttt{gf256\_mul} trực tiếp bằng logic LUT/XOR cho phép trình tổng hợp Quartus triệt tiêu các nhánh hằng trong bộ mã hóa và khối syndrome, nên mức dùng DSP bằng 0\%.
+    \item \textbf{Mạng xung nhịp, PLL và Flash cấu hình (CFM/UFM):} Tín hiệu \texttt{MAX10\_CLK1\_50} qua \texttt{PIN\_P11} (ngõ vào xung nhịp chuyên dụng Bank~3) đi thẳng vào mạng phân phối toàn cục (\textit{Global Clock Network}) để cấp clock đồng thời tới 2.035 thanh ghi với độ lệch thấp, không cần nhân/chia tần qua PLL (0/4 PLL). Bộ nhớ Flash nội CFM lưu ảnh cấu hình theo chế độ \texttt{SINGLE IMAGE WITH ERAM}, hỗ trợ khởi động tức thì (\textit{Instant-On} $<10\text{ ms}$) và không dùng vùng dữ liệu người dùng UFM (0/1 khối).
+\end{itemize}
+
+\section{Hệ thống ngoại vi giao tiếp trên DE10-Lite}
+\label{sec:peripherals}
+
+Hệ thống khai thác 4 nhóm ngoại vi vật lý trên DE10-Lite, đồng bộ về chuẩn điện áp $3{,}3\text{ V}$ và cực tính logic với các module phần cứng trong \texttt{rtl/board/}:
+\begin{itemize}
+    \item \textbf{10 công tắc trượt \texttt{SW[9:0]} (tích cực cao, \texttt{3.3-V LVTTL}):} Gạt lên mức \texttt{1}, gạt xuống mức \texttt{0}, đi qua bộ đồng bộ 2 tầng FF trong \texttt{input\_control}. Ở pha nhập liệu (\texttt{SW[8]=0}), \texttt{SW[7:0]} biểu diễn 1 byte dữ liệu (\texttt{0x00}--\texttt{0xFF}). Ở pha chạy và xem kết quả (\texttt{SW[8]=1}), \texttt{SW[9]} bật bộ tiêm lỗi (\texttt{1} = bật), \texttt{SW[7]} chọn số lỗi (\texttt{0} = 2 lỗi trong ngưỡng; \texttt{1} = 3 lỗi vượt ngưỡng) và \texttt{SW[3:0]} chọn địa chỉ đọc byte $0\dots 14$.
+    \item \textbf{2 nút nhấn \texttt{KEY[1:0]} (tích cực thấp, \texttt{3.3 V SCHMITT TRIGGER}):} Ngõ ra kéo lên $3{,}3\text{ V}$ khi thả (\texttt{1}) và nối xuống mức \texttt{0} khi nhấn. Bộ đệm \textit{Schmitt Trigger} trên board tạo độ trễ chuyển ngưỡng (\textit{hysteresis}) nhằm triệt nhiễu cao tần và làm gọn sườn xung, song vẫn không tự loại bỏ hiện tượng dội tiếp điểm cơ khí kéo dài vài mili-giây. Do đó, \texttt{KEY[1]} (Xác nhận/Bắt đầu) đi qua bộ đếm lọc dội 10\,ms ($500.000$ chu kỳ tại 50\,MHz) trong \texttt{input\_control}, còn \texttt{KEY[0]} (Reset toàn hệ thống) nối qua \texttt{reset\_sync} để kích hoạt reset bất đồng bộ và nhả reset đồng bộ sau 2 chu kỳ.
+    \item \textbf{3 LED đơn \texttt{LEDR[2:0]} (tích cực cao, \texttt{3.3-V LVTTL}):} Hiển thị trạng thái giao dịch gồm \texttt{LEDR[0]} (\textit{Busy} đang xử lý), \texttt{LEDR[1]} (\textit{Done} đã hoàn tất) và \texttt{LEDR[2]} (\textit{Fail} vượt ngưỡng $T=2$). Tổ hợp \texttt{3'b010} chỉ thị giải mã thành công, \texttt{3'b110} chỉ thị thất bại.
+    \item \textbf{2 LED 7 đoạn \texttt{HEX1:HEX0} (Anode chung, tích cực thấp):} Cực Anode nối nguồn dương, các thanh \texttt{a..g} và \texttt{DP} sáng khi ngõ ra ở mức \texttt{0} và tắt ở mức \texttt{1}. Bus 8 bit ánh xạ từ thấp lên cao tương ứng với thanh \texttt{HEXx[6:0] = \{g,f,e,d,c,b,a\}} và bit cao nhất \texttt{HEXx[7] = DP}. Module \texttt{hex\_decoder} luôn đặt \texttt{hex\_out = \{1'b1, seg\_n\}} để tắt dấu chấm thập phân và giải mã 4 bit nibble thành ký tự thập lục phân theo Bảng~\ref{tab:hex-lut} (ví dụ byte \texttt{0xA7} xuất \texttt{HEX1 = 0x88} và \texttt{HEX0 = 0xF8}).
+\end{itemize}
+
+\begin{table}[!htb]
+    \centering
+    \caption{Bảng mã giải mã LED 7 đoạn Anode chung trong \texttt{rtl/board/hex\_decoder.v} (\texttt{DP = 1})}
+    \label{tab:hex-lut}
+    \scriptsize
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.05}
+    \begin{tabular}{c c c c | c c c c}
+        \toprule
+        \textbf{Nibble} & \textbf{\texttt{seg\_n[6:0]}} & \textbf{\texttt{hex\_out[7:0]}} & \textbf{Hiển thị} & \textbf{Nibble} & \textbf{\texttt{seg\_n[6:0]}} & \textbf{\texttt{hex\_out[7:0]}} & \textbf{Hiển thị} \\
+        \midrule
+        \texttt{4'h0} & \texttt{7'b100\_0000} & \texttt{0xC0} & \texttt{0} & \texttt{4'h8} & \texttt{7'b000\_0000} & \texttt{0x80} & \texttt{8} \\
+        \texttt{4'h1} & \texttt{7'b111\_1001} & \texttt{0xF9} & \texttt{1} & \texttt{4'h9} & \texttt{7'b001\_0000} & \texttt{0x90} & \texttt{9} \\
+        \texttt{4'h2} & \texttt{7'b010\_0100} & \texttt{0xA4} & \texttt{2} & \texttt{4'hA} & \texttt{7'b000\_1000} & \texttt{0x88} & \texttt{A} \\
+        \texttt{4'h3} & \texttt{7'b011\_0000} & \texttt{0xB0} & \texttt{3} & \texttt{4'hB} & \texttt{7'b000\_0011} & \texttt{0x83} & \texttt{b} \\
+        \texttt{4'h4} & \texttt{7'b001\_1001} & \texttt{0x99} & \texttt{4} & \texttt{4'hC} & \texttt{7'b100\_0110} & \texttt{0xC6} & \texttt{C} \\
+        \texttt{4'h5} & \texttt{7'b001\_0010} & \texttt{0x92} & \texttt{5} & \texttt{4'hD} & \texttt{7'b010\_0001} & \texttt{0xA1} & \texttt{d} \\
+        \texttt{4'h6} & \texttt{7'b000\_0010} & \texttt{0x82} & \texttt{6} & \texttt{4'hE} & \texttt{7'b000\_0110} & \texttt{0x86} & \texttt{E} \\
+        \texttt{4'h7} & \texttt{7'b111\_1000} & \texttt{0xF8} & \texttt{7} & \texttt{4'hF} & \texttt{7'b000\_1110} & \texttt{0x8E} & \texttt{F} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Quy hoạch gán chân tín hiệu (Pin Assignment) và Ràng buộc thời gian}
+\label{sec:pin-assignment}
+
+Tệp cấu hình \texttt{quartus/ReedSolomon.qsf} thiết lập các thông số toàn cục cho trình biên dịch Quartus Prime \texttt{25.1std.0}: chỉ định thực thể đỉnh \texttt{top\_de10\_lite}, chuẩn I/O mặc định \texttt{3.3-V LVTTL}, dải nhiệt độ lớp ghép $0\text{--}85^{\circ}\text{C}$, thư mục tìm kiếm tệp tham số \texttt{SEARCH\_PATH ../rtl/include} và cấu hình Flash nội \texttt{SINGLE IMAGE WITH ERAM}. Đặc biệt, chỉ thị \texttt{RESERVE\_ALL\_UNUSED\_PINS\_WEAK\_PULLUP "AS INPUT TRI-STATED"} trong \texttt{ReedSolomon.qsf} (được xác nhận trong \texttt{ReedSolomon.fit.rpt} với tùy chọn \texttt{Weak Pull-Up Resistor = Off}) đặt toàn bộ chân không gán của gói FBGA-484 về chế độ ngõ vào tổng trở cao (\texttt{RESERVED\_INPUT}) và \textbf{không kích hoạt điện trở kéo lên yếu}, tránh tạo dòng rò hay xung đột mức logic với các chip ngoại vi không dùng trên board.
+
+Toàn bộ \textbf{32 chân tín hiệu} (13 đầu vào, 19 đầu ra) được gán lên Bank~3, Bank~6 và Bank~7 dùng chung nguồn $V_{\text{CCIO}} = 3{,}3\text{ V}$, trong đó các chân đầu ra mặc định sử dụng dòng lái 8\,mA (theo mục \textit{Output Pins} của \texttt{ReedSolomon.fit.rpt}). Bảng~\ref{tab:pin-assign} liệt kê đầy đủ 32 chân vật lý trích xuất từ \texttt{ReedSolomon.qsf}.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Bảng quy hoạch toàn bộ 32 chân tín hiệu vật lý trên Kit DE10-Lite}
+    \label{tab:pin-assign}
+    \scriptsize
+    \setlength{\tabcolsep}{3.5pt}
+    \renewcommand{\arraystretch}{1.01}
+    \begin{tabularx}{\textwidth}{l c c c l X}
+        \toprule
+        \textbf{Tên cổng RTL} & \textbf{Chân FPGA} & \textbf{Hướng} & \textbf{Bank} & \textbf{Chuẩn I/O} & \textbf{Chức năng tín hiệu} \\
+        \midrule
+        \texttt{MAX10\_CLK1\_50} & \texttt{PIN\_P11} & Input & 3 & \texttt{3.3-V LVTTL} & Xung nhịp hệ thống 50\,MHz \\
+        \texttt{KEY[0]} & \texttt{PIN\_B8} & Input & 7 & \texttt{3.3 V SCHMITT TRIGGER} & Reset hệ thống (tích cực thấp) \\
+        \texttt{KEY[1]} & \texttt{PIN\_A7} & Input & 7 & \texttt{3.3 V SCHMITT TRIGGER} & Xác nhận nạp / Bắt đầu chạy \\
+        \texttt{SW[0]} & \texttt{PIN\_C10} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 0 / Địa chỉ đọc bit 0 \\
+        \texttt{SW[1]} & \texttt{PIN\_C11} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 1 / Địa chỉ đọc bit 1 \\
+        \texttt{SW[2]} & \texttt{PIN\_D12} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 2 / Địa chỉ đọc bit 2 \\
+        \texttt{SW[3]} & \texttt{PIN\_C12} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 3 / Địa chỉ đọc bit 3 \\
+        \texttt{SW[4]} & \texttt{PIN\_A12} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 4 (khi \texttt{SW[8]=0}) \\
+        \texttt{SW[5]} & \texttt{PIN\_B12} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 5 (khi \texttt{SW[8]=0}) \\
+        \texttt{SW[6]} & \texttt{PIN\_A13} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 6 (khi \texttt{SW[8]=0}) \\
+        \texttt{SW[7]} & \texttt{PIN\_A14} & Input & 7 & \texttt{3.3-V LVTTL} & Bit dữ liệu 7 / Chọn 2 (\texttt{0}) hay 3 lỗi (\texttt{1}) \\
+        \texttt{SW[8]} & \texttt{PIN\_B14} & Input & 7 & \texttt{3.3-V LVTTL} & Chọn chế độ: \texttt{0} = Nhập, \texttt{1} = Chạy/Xem \\
+        \texttt{SW[9]} & \texttt{PIN\_F15} & Input & 7 & \texttt{3.3-V LVTTL} & Bật/tắt tiêm lỗi (khi \texttt{SW[8]=1}) \\
+        \midrule
+        \texttt{LEDR[0]} & \texttt{PIN\_A8} & Output & 7 & \texttt{3.3-V LVTTL} & Đèn báo \textit{Busy} (đang xử lý) \\
+        \texttt{LEDR[1]} & \texttt{PIN\_A9} & Output & 7 & \texttt{3.3-V LVTTL} & Đèn báo \textit{Done} (đã hoàn tất) \\
+        \texttt{LEDR[2]} & \texttt{PIN\_A10} & Output & 7 & \texttt{3.3-V LVTTL} & Đèn báo \textit{Fail} (vượt ngưỡng $T=2$) \\
+        \texttt{HEX0[0]} & \texttt{PIN\_C14} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{a} của \texttt{HEX0} (nibble thấp) \\
+        \texttt{HEX0[1]} & \texttt{PIN\_E15} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{b} của \texttt{HEX0} \\
+        \texttt{HEX0[2]} & \texttt{PIN\_C15} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{c} của \texttt{HEX0} \\
+        \texttt{HEX0[3]} & \texttt{PIN\_C16} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{d} của \texttt{HEX0} \\
+        \texttt{HEX0[4]} & \texttt{PIN\_E16} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{e} của \texttt{HEX0} \\
+        \texttt{HEX0[5]} & \texttt{PIN\_D17} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{f} của \texttt{HEX0} \\
+        \texttt{HEX0[6]} & \texttt{PIN\_C17} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{g} của \texttt{HEX0} \\
+        \texttt{HEX0[7]} & \texttt{PIN\_D15} & Output & 7 & \texttt{3.3-V LVTTL} & Dấu chấm \texttt{DP} của \texttt{HEX0} (luôn tắt) \\
+        \texttt{HEX1[0]} & \texttt{PIN\_C18} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{a} của \texttt{HEX1} (nibble cao) \\
+        \texttt{HEX1[1]} & \texttt{PIN\_D18} & Output & 6 & \texttt{3.3-V LVTTL} & Thanh \texttt{b} của \texttt{HEX1} \\
+        \texttt{HEX1[2]} & \texttt{PIN\_E18} & Output & 6 & \texttt{3.3-V LVTTL} & Thanh \texttt{c} của \texttt{HEX1} \\
+        \texttt{HEX1[3]} & \texttt{PIN\_B16} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{d} của \texttt{HEX1} \\
+        \texttt{HEX1[4]} & \texttt{PIN\_A17} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{e} của \texttt{HEX1} \\
+        \texttt{HEX1[5]} & \texttt{PIN\_A18} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{f} của \texttt{HEX1} \\
+        \texttt{HEX1[6]} & \texttt{PIN\_B17} & Output & 7 & \texttt{3.3-V LVTTL} & Thanh \texttt{g} của \texttt{HEX1} \\
+        \texttt{HEX1[7]} & \texttt{PIN\_A16} & Output & 7 & \texttt{3.3-V LVTTL} & Dấu chấm \texttt{DP} của \texttt{HEX1} (luôn tắt) \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Phân tích định thời tĩnh (TimeQuest STA) \cite{quartussta} sử dụng tệp ràng buộc Synopsys Design Constraints \texttt{quartus/timing.sdc} (Đoạn mã~\ref{lst:timing-sdc}). Lệnh \texttt{create\_clock} ấn định xung nhịp cơ sở \texttt{sys\_clk} chu kỳ $20{,}000\text{ ns}$ (50\,MHz) trên chân \texttt{MAX10\_CLK1\_50}, còn \texttt{derive\_clock\_uncertainty} tự động nội suy biên độ nhiễu pha (\textit{jitter}) và lệch xung (\textit{skew}) giữa các đường dẫn đồng bộ nội bộ của họ MAX 10. Do \texttt{KEY}, \texttt{SW}, \texttt{LEDR} và \texttt{HEX} phục vụ thao tác người dùng tốc độ thấp (đã đồng bộ hóa 2 tầng FF và lọc dội ở ngõ vào), hệ thống không đặt các ràng buộc giả định \texttt{set\_input\_delay} hoặc \texttt{set\_output\_delay} cho giao tiếp ngoại vi. Kiến trúc RTL hoàn chỉnh của bộ mã hóa -- giải mã $\text{RS}(15,11)$ chạy trên nền tảng phần cứng này được trình bày chi tiết trong Chương~3.
+
+\begin{lstlisting}[style=tclstyle, caption={Nội dung tệp ràng buộc thời gian \texttt{quartus/timing.sdc}}, label={lst:timing-sdc}]
+create_clock -name sys_clk -period 20.000 [get_ports {MAX10_CLK1_50}]
+derive_clock_uncertainty
+\end{lstlisting}
+
+
+% ============================================================================
+% CHUONG 3
+% ============================================================================
+\chapter{Thực hiện Reed-Solomon trên FPGA}
+\label{ch:rs-fpga}
+
+Chương này trình bày kiến trúc phần cứng RTL của bộ mã hóa -- giải mã $\text{RS}(15,11)$ trên Intel MAX 10, bao gồm cấu trúc phân cấp 21 tệp Verilog, giao thức bắt tay luồng, các khối số học $\text{GF}(256)$, bộ mã hóa LFSR, 6 module thành phần của bộ giải mã, các khối giao tiếp ngoại vi cùng kết quả kiểm chứng mô phỏng và tổng hợp Quartus Prime \texttt{25.1std.0}.
+
+\section{Kiến trúc tổng thể hệ thống trên FPGA}
+\label{sec:top-arch}
+
+Hệ thống RTL được tổ chức phân cấp gồm tệp tham số dùng chung \texttt{rtl/include/rs\_params.vh} và \textbf{21 tệp mã nguồn Verilog} chia thành 7 nhóm: \texttt{gf\_arithmetic}, \texttt{rs\_encoder}, \texttt{rs\_decoder}, \texttt{memory}, \texttt{controller}, \texttt{demo} và \texttt{board}. Các hằng số tại \texttt{rs\_params.vh} cố định cấu hình $m = 8$, \texttt{GF\_PRIM\_POLY = 9'h11D} ($u^8+u^4+u^3+u^2+1$), \texttt{GF\_ALPHA = 8'h02}, $N = 15$, $K = 11$, $R = 4$, $T = 2$ (mã rút gọn từ $\text{RS}(255,251)$), nghiệm liên tiếp bắt đầu tại $F = 0$ với bước 1. Hình~\ref{fig:top-arch} minh họa sơ đồ khối kết nối toàn bộ thực thể con bên trong \texttt{top\_de10\_lite}.
+
+\begin{figure}[!htb]
+    \centering
+    \resizebox{0.93\textwidth}{!}{%
+    \begin{tikzpicture}[>=stealth, font=\footnotesize]
+        % Tang giao tiep ngo vao
+        \draw[thick, rounded corners=2pt, fill=blue!6] (0.0, 6.2) rectangle (3.7, 7.25);
+        \node[align=center] at (1.85, 6.72) {\texttt{reset\_sync} (\texttt{u\_reset\_sync})\\Async assert, 2-FF sync};
+
+        \draw[thick, rounded corners=2pt, fill=blue!6] (4.7, 6.2) rectangle (10.7, 7.25);
+        \node[align=center] at (7.7, 6.72) {\texttt{input\_control} (\texttt{u\_input\_ctrl})\\2-FF sync \texttt{KEY[1], SW[9:0]}; Debounce 10\,ms};
+
+        \node[font=\scriptsize\bfseries] at (1.85, 7.75) {\texttt{MAX10\_CLK1\_50}, \texttt{KEY[0]}};
+        \draw[->, thick] (1.85, 7.55) -- (1.85, 7.25);
+        \node[font=\scriptsize\bfseries] at (7.7, 7.75) {\texttt{KEY[1]}, \texttt{SW[9:0]}};
+        \draw[->, thick] (7.7, 7.55) -- (7.7, 7.25);
+
+        % Duong du lieu streaming giua
+        \draw[thick, rounded corners=2pt, fill=green!7] (0.0, 3.8) rectangle (2.6, 5.1);
+        \node[align=center] at (1.3, 4.45) {\texttt{data\_buffer}\\\texttt{u\_buf\_input}\\($11\times 8$-bit)};
+
+        \draw[thick, rounded corners=2pt, fill=orange!9] (3.3, 3.8) rectangle (5.9, 5.1);
+        \node[align=center] at (4.6, 4.45) {\texttt{rs\_encoder}\\\texttt{u\_encoder}\\LFSR $R=4$};
+
+        \draw[thick, rounded corners=2pt, fill=red!8] (6.6, 3.8) rectangle (9.2, 5.1);
+        \node[align=center] at (7.9, 4.45) {\texttt{error\_injector}\\\texttt{u\_injector}\\0 / 2 / 3 lỗi};
+
+        \draw[thick, rounded corners=2pt, fill=orange!11] (9.9, 3.8) rectangle (12.6, 5.1);
+        \node[align=center] at (11.25, 4.45) {\texttt{rs\_decoder}\\\texttt{u\_decoder}\\6 khối + Re-verify};
+
+        \draw[thick, rounded corners=2pt, fill=green!7] (13.3, 3.8) rectangle (15.9, 5.1);
+        \node[align=center] at (14.6, 4.45) {\texttt{data\_buffer}\\\texttt{u\_buf\_output}\\($15\times 8$-bit)};
+
+        \draw[->, thick] (2.6, 4.45) -- node[above, font=\scriptsize]{\texttt{v/r}} (3.3, 4.45);
+        \draw[->, thick] (5.9, 4.45) -- node[above, font=\scriptsize]{\texttt{v/r/l}} (6.6, 4.45);
+        \draw[->, thick] (9.2, 4.45) -- node[above, font=\scriptsize]{\texttt{v/r/l}} (9.9, 4.45);
+        \draw[->, thick] (12.6, 4.45) -- node[above, font=\scriptsize]{\texttt{v/r/l}} (13.3, 4.45);
+
+        % Hang duoi
+        \draw[thick, rounded corners=2pt, fill=gray!10] (0.0, 0.7) rectangle (3.3, 2.15);
+        \node[align=center] at (1.65, 1.42) {\texttt{result\_checker}\\\texttt{u\_checker}\\So sánh 11 byte};
+
+        \draw[thick, rounded corners=2pt, fill=purple!8] (4.3, 0.7) rectangle (9.4, 2.15);
+        \node[align=center] at (6.85, 1.42) {\texttt{rs\_controller} (\texttt{u\_controller})\\FSM 4 trạng thái (\texttt{S\_IDLE..S\_DONE})};
+
+        \draw[thick, rounded corners=2pt, fill=gray!10] (10.1, 0.7) rectangle (12.4, 2.15);
+        \node[align=center] at (11.25, 1.42) {\texttt{cycle\_counter}\\\texttt{u\_counter}\\Đếm 32-bit};
+
+        \draw[thick, rounded corners=2pt, fill=blue!7] (13.1, 0.7) rectangle (15.9, 2.15);
+        \node[align=center] at (14.5, 1.42) {\texttt{display\_control}\\\& \texttt{hex\_decoder}};
+
+        % Ket noi duong dieu khien (khong chong cheo nhan hay cat ngang khoi)
+        \draw[->, thick] (6.1, 6.2) -- (6.1, 2.15);
+        \node[font=\scriptsize, fill=white, inner sep=1pt, anchor=east] at (5.95, 5.6) {\texttt{confirm\_pulse, sw\_sync, sw\_latched}};
+
+        \draw[->, thick] (1.1, 3.8) -- (1.1, 2.15);
+        \draw[->, thick] (14.6, 3.8) -- (14.6, 2.75) -| (2.5, 2.15);
+        \draw[->, thick] (14.0, 2.75) -| (8.2, 2.15);
+        \node[font=\scriptsize, fill=white, inner sep=1pt] at (11.4, 2.75) {\texttt{rd\_data / chk\_data}};
+
+        \draw[->, thick] (6.85, 2.15) -- (6.85, 3.25) -| (4.6, 3.8);
+        \draw[->, thick] (6.85, 3.25) -| (7.9, 3.8);
+        \draw[->, thick] (6.85, 3.25) -| (11.25, 3.8);
+        \draw[->, thick] (6.85, 3.25) -| (1.9, 3.8);
+
+        \draw[->, thick] (9.4, 1.7) -- (10.1, 1.7);
+        \draw[->, thick] (4.3, 1.42) -- (3.3, 1.42);
+        % Duong byte, status di vong duoi u_counter de khong cat qua khoi
+        \draw[->, thick] (8.8, 0.7) -- (8.8, 0.25) -- (13.6, 0.25) -- (13.6, 0.7);
+        \node[below, font=\scriptsize, fill=white, inner sep=1pt] at (11.2, 0.25) {\texttt{byte\_to\_display, status}};
+
+        \node[font=\scriptsize\bfseries] at (14.5, -0.05) {\texttt{LEDR[2:0]}, \texttt{HEX1[7:0]}, \texttt{HEX0[7:0]}};
+        \draw[->, thick] (14.5, 0.7) -- (14.5, 0.15);
+    \end{tikzpicture}%
+    }
+    \caption{Sơ đồ khối kiến trúc tổng thể hệ thống \texttt{top\_de10\_lite} trên FPGA}
+    \label{fig:top-arch}
+\end{figure}
+
+\subsection{\texorpdfstring{Giao thức luồng (\textit{Valid/Ready}), bộ đệm \texttt{data\_buffer} và điều phối \texttt{rs\_controller}}{Giao thuc luong Valid/Ready, bo dem data\_buffer va dieu phoi rs\_controller}}
+\label{subsec:streaming-ctrl}
+
+Chuỗi xử lý tuần tự qua \texttt{u\_buf\_input}, \texttt{u\_encoder}, \texttt{u\_injector}, \texttt{u\_decoder} và \texttt{u\_buf\_output} sử dụng giao thức bắt tay luồng \texttt{valid}/\texttt{ready} có kiểm soát ngược (\textit{backpressure}), tương đồng mô hình chuẩn phân khối truyền dữ liệu phần cứng \cite{mathworksrs}. Mỗi symbol 8 bit chỉ dịch chuyển khi thỏa mãn điều kiện $\text{fire} = \texttt{valid} \wedge \texttt{ready}$. Thanh ghi xuất đầu ra chỉ nhận byte kế tiếp khi $\texttt{out\_free} = \texttt{!out\_valid} \vee \texttt{out\_ready}$, đảm bảo không thất thoát dữ liệu khi khối kế sau hạ \texttt{ready = 0}. Tín hiệu \texttt{out\_last} kích hoạt tại symbol thứ 15 ($N-1 = 14$), \texttt{busy} duy trì mức cao suốt chu trình và \texttt{done} phát xung 1 chu kỳ khi hoàn tất.
+
+Module \texttt{data\_buffer} xây dựng mảng thanh ghi \texttt{reg [7:0] mem [0:DEPTH-1]} hỗ trợ đồng thời cổng ghi ngẫu nhiên (\texttt{wr\_en}, \texttt{wr\_addr}, \texttt{wr\_data}), hai cổng đọc tổ hợp 0 chu kỳ trễ (\texttt{rd\_addr} phục vụ hiển thị và \texttt{chk\_addr} cho kiểm tra đối chiếu) cùng giao diện truyền/nhận luồng \texttt{stream\_start}. Hai thực thể khởi tạo gồm \texttt{u\_buf\_input} (\texttt{DEPTH=11}) và \texttt{u\_buf\_output} (\texttt{DEPTH=15}).
+
+Bộ điều phối \texttt{rs\_controller} vận hành theo máy trạng thái 4 trạng thái (\texttt{S\_IDLE}, \texttt{S\_START}, \texttt{S\_RUN}, \texttt{S\_DONE}):
+\begin{itemize}
+    \item \textbf{Pha nhập liệu (\texttt{sw\_sync[8] == 0}):} Mỗi xung \texttt{confirm\_\allowbreak pulse} ghi \texttt{sw\_\allowbreak latched[7:0]} vào \texttt{u\_buf\_\allowbreak input} tại con trỏ \texttt{in\_cnt} ($0\dots 10$ tự quay vòng). Đầu ra \texttt{byte\_to\_display} nối trực tiếp với \texttt{sw\_sync[7:0]} và đặt \texttt{clear\_status = 1}. Khi \texttt{SW[8]} chuyển xuống (\texttt{1->0}), con trỏ \texttt{in\_cnt} và cờ \texttt{has\_run} được xóa về 0.
+    \item \textbf{Pha chạy và xem kết quả (\texttt{sw\_sync[8] == 1}):} Tại \texttt{S\_IDLE}, xung \texttt{confirm\_\allowbreak pulse} đặt \texttt{busy <= 1}, phát \texttt{clear\_status\_\allowbreak pulse} và nhảy sang \texttt{S\_START}. Ở \texttt{S\_START}, hệ thống phát xung khởi động 1 chu kỳ tới \texttt{buf\_out\_clear}, \texttt{counter\_clear}, \texttt{counter\_start}, \texttt{encoder\_start}, \texttt{injector\_start}, \texttt{decoder\_start} và \texttt{buf\_in\_\allowbreak stream\_start}, rồi chờ \texttt{decoder\_done} ở \texttt{S\_RUN}. Sau khi giải mã xong, \texttt{rs\_\allowbreak controller} chốt \texttt{fail <= decoder\_fail}, phát \texttt{done}, \texttt{counter\_stop}, \texttt{checker\_start}, đặt \texttt{has\_\allowbreak run <= 1} và qua \texttt{S\_DONE} trở về \texttt{S\_IDLE}. Khi xem lại kết quả (\texttt{has\_run = 1}), \texttt{byte\_to\_display} đọc \texttt{u\_buf\_\allowbreak output} theo \texttt{buf\_out\_\allowbreak rd\_addr}; theo \texttt{rs\_\allowbreak controller.v}, nếu \texttt{sw\_sync[3:0] >= 15}, \texttt{buf\_out\_\allowbreak rd\_addr} bị kẹp về \textbf{địa chỉ \texttt{0}} (tức hiển thị byte \texttt{mem[0]} của \texttt{u\_buf\_output}, không phải ép giá trị hiển thị về \texttt{0x00}). Tương tự, khi chưa nhấn chạy (\texttt{has\_run = 0}), mạch đọc \texttt{u\_buf\_input} theo \texttt{buf\_in\_\allowbreak rd\_addr} (kẹp về địa chỉ \texttt{0} khi \texttt{sw\_sync[3:0] >= 11}).
+\end{itemize}
+
+\section{Thiết kế RTL khối Số học \texorpdfstring{$\text{GF}(256)$}{GF(256)} và Bộ mã hóa (\texttt{rs\_encoder})}
+\label{sec:gf-encoder}
+
+Ba module trong \texttt{rtl/gf\_arithmetic/} thực thi toàn bộ phép toán trường $\text{GF}(256)$ dưới dạng mạch tổ hợp 0 chu kỳ trễ:
+\begin{itemize}
+    \item \textbf{\texttt{gf256\_add}:} Cộng hai byte trên $\text{GF}(256)$ qua 8 cổng XOR song song (\texttt{assign y = a \char94{} b;}).
+    \item \textbf{\texttt{gf256\_mul}:} Tính tích $(a \cdot b) \bmod p(u)$ qua vòng lặp mở 8 tầng dịch trái và rút gọn theo hằng số \texttt{POLY\_LOW = 8'h1D} (\textit{shift-and-reduce}). So với kiến trúc dùng RAM tra log/antilog kép, phương pháp tổ hợp loại bỏ độ trễ đọc và cho phép trình tổng hợp triệt tiêu các nhánh hằng khi một thừa số là hệ số cố định trong \texttt{rs\_encoder} hoặc \texttt{syndrome}.
+    \item \textbf{\texttt{gf256\_inv}:} Tính $a^{-1} = a^{254}$ bằng bảng tra 256 mục \texttt{INV\_LUT} sinh tự động lúc \textit{elaboration} qua hàm \texttt{build\_inv\_lut}. Với $a = \texttt{0x00}$, khối xuất \texttt{y = 8'h00} và dựng cờ \texttt{zero\_err = 1} (\texttt{valid = 0}) để phát hiện ngoại lệ chia cho 0 tại khối Forney.
+\end{itemize}
+
+Bộ mã hóa \texttt{rs\_encoder} tạo từ mã hệ thống $c(x) = x^R m(x) + \big(x^R m(x) \bmod g(x)\big)$ theo đa thức sinh $g(x) = x^4 + \texttt{0x0F}x^3 + \texttt{0x36}x^2 + \texttt{0x78}x + \texttt{0x40}$ lưu trong tham số 40-bit \texttt{GEN}. Kiến trúc sử dụng 4 thanh ghi \texttt{parity[0:3]} (\texttt{parity[0]} giữ hệ số bậc $x^3$) và FSM 4 trạng thái (\texttt{S\_IDLE}, \texttt{S\_DATA}, \texttt{S\_PARITY}, \texttt{S\_DRAIN}): trong $K=11$ chu kỳ ở \texttt{S\_DATA}, byte dữ liệu vừa xuất ra \texttt{data\_out}, vừa đi qua nhánh phản hồi \texttt{feedback = data\_in \char94{} parity[0]} nhân với các hệ số \texttt{GEN[8*(R-1-g) +: 8]} để cập nhật \texttt{parity[0..3]}; ở \texttt{S\_PARITY}, 4 byte parity được đẩy tuần tự ra ngoài với \texttt{out\_last = 1} tại byte thứ 15 rồi đợi xác nhận \texttt{out\_fire} ở \texttt{S\_DRAIN} trước khi phát xung \texttt{done}. Đoạn mã~\ref{lst:rs-encoder-lfsr} trích nguyên văn nhánh phản hồi LFSR trong \texttt{rtl/rs\_encoder/rs\_encoder.v}.
+
+\begin{lstlisting}[style=verilogstyle, caption={Trích đoạn RTL tạo nhánh phản hồi LFSR trong \texttt{rtl/rs\_encoder/rs\_encoder.v}}, label={lst:rs-encoder-lfsr}]
+    // Phan hoi LFSR: feedback = data_in + parity[0]
+    gf256_add u_fb_add (
+        .a (data_in),
+        .b (parity[0]),
+        .y (feedback)
+    );
+
+    // R nhanh nhan he so da thuc sinh va cong voi thanh ghi parity ke tiep
+    genvar g;
+    generate
+        for (g = 0; g < R; g = g + 1) begin : gen_lfsr_taps
+            gf256_mul u_tap_mul (
+                .a (feedback),
+                .b (GEN[8*(R-1-g) +: 8]),
+                .y (fb_mul[g])
+            );
+
+            if (g < R - 1) begin : gen_tap_add
+                gf256_add u_tap_add (
+                    .a (parity[g+1]),
+                    .b (fb_mul[g]),
+                    .y (par_next[g])
+                );
+            end else begin : gen_tap_last
+                assign par_next[g] = fb_mul[g];
+            end
+        end
+    endgenerate
+\end{lstlisting}
+
+\section{Thiết kế RTL Bộ giải mã (\texttt{rs\_decoder}) và 6 Module thành phần}
+\label{sec:rs-decoder}
+
+Bộ giải mã \texttt{rs\_decoder} sử dụng giao diện luồng đồng nhất với bộ mã hóa (bổ sung cờ \texttt{fail}) và điều phối 6 module toán học thông qua máy trạng thái 12 trạng thái \texttt{state[3:0]} (Hình~\ref{fig:decoder-fsm}).
+
+\begin{figure}[!htb]
+    \centering
+    \resizebox{0.80\textwidth}{!}{%
+    \begin{tikzpicture}[>=stealth, font=\footnotesize]
+        % Cot trai
+        \node[draw, thick, rounded corners=3pt, fill=blue!10, minimum width=2.4cm, minimum height=0.65cm] (Sidle) at (2.0, 7.6) {\texttt{S\_IDLE}};
+        \node[draw, thick, rounded corners=3pt, fill=green!10, minimum width=2.4cm, minimum height=0.65cm] (Srecv) at (2.0, 6.2) {\texttt{S\_RECV} (16)};
+        \node[draw, thick, rounded corners=3pt, fill=yellow!15, minimum width=2.7cm, minimum height=0.65cm] (Swait1) at (2.0, 4.8) {\texttt{S\_WAIT\_SYN1} (1)};
+        \node[draw, thick, rounded corners=3pt, fill=orange!12, minimum width=2.7cm, minimum height=0.65cm] (Sbm) at (2.0, 3.3) {\texttt{S\_BM} (11)};
+        \node[draw, thick, rounded corners=3pt, fill=orange!12, minimum width=2.7cm, minimum height=0.65cm] (Somega) at (2.0, 1.9) {\texttt{S\_OMEGA} (6)};
+        \node[draw, thick, rounded corners=3pt, fill=orange!12, minimum width=2.7cm, minimum height=0.65cm] (Schien) at (2.0, 0.5) {\texttt{S\_CHIEN} (17)};
+
+        % Cot giua
+        \node[draw, thick, rounded corners=3pt, fill=orange!12, minimum width=2.8cm, minimum height=0.65cm] (Sforney) at (7.0, 0.5) {\texttt{S\_FORNEY} (17)};
+        \node[draw, thick, rounded corners=3pt, fill=orange!12, minimum width=2.8cm, minimum height=0.65cm] (Scorr) at (7.0, 1.9) {\texttt{S\_CORRECT} (17)};
+        \node[draw, thick, rounded corners=3pt, fill=purple!10, minimum width=3.1cm, minimum height=0.65cm] (Svfeed) at (7.0, 3.3) {\texttt{S\_VERIFY\_FEED} (16)};
+        \node[draw, thick, rounded corners=3pt, fill=purple!10, minimum width=3.1cm, minimum height=0.65cm] (Svwait) at (7.0, 4.8) {\texttt{S\_VERIFY\_WAIT} (1)};
+
+        % Cot phai
+        \node[draw, thick, rounded corners=3pt, fill=green!12, minimum width=2.8cm, minimum height=0.65cm] (Soprep) at (12.8, 4.8) {\texttt{S\_OUT\_PREP} (1)};
+        \node[draw, thick, rounded corners=3pt, fill=green!12, minimum width=2.8cm, minimum height=0.65cm] (Sout) at (12.8, 6.8) {\texttt{S\_OUT} (15)};
+
+        % Chuyen trang thai
+        \draw[->, thick] (Sidle) -- node[right, font=\scriptsize]{\texttt{start=1}} (Srecv);
+        \draw[->, thick] (Srecv) -- node[right, font=\scriptsize]{15 byte} (Swait1);
+        \draw[->, thick] (Swait1) -- node[right, font=\scriptsize]{\texttt{syn\_zero=0}} (Sbm);
+        \draw[->, thick] (Sbm) -- node[right, font=\scriptsize]{hợp lệ} (Somega);
+        \draw[->, thick] (Somega) -- node[right, font=\scriptsize]{\texttt{ee\_done}} (Schien);
+        \draw[->, thick] (Schien) -- node[above, font=\scriptsize]{đủ nghiệm} (Sforney);
+        \draw[->, thick] (Sforney) -- node[right, font=\scriptsize]{hợp lệ} (Scorr);
+        \draw[->, thick] (Scorr) -- node[right, font=\scriptsize]{\texttt{ec\_done}} (Svfeed);
+        \draw[->, thick] (Svfeed) -- node[right, font=\scriptsize]{15 byte} (Svwait);
+        \draw[->, thick] (Svwait) -- node[above, font=\scriptsize, align=center]{\texttt{syn\_zero=1/0}\\\texttt{fail=0/1}} (Soprep);
+        \draw[->, thick] (Soprep) -- (Sout);
+        \draw[->, thick] (Sout) |- node[pos=0.75, above, font=\scriptsize]{\texttt{out\_fire \& out\_cnt==14 (done=1)}} (Sidle);
+
+        % Fast-path
+        \draw[->, thick, blue!75!black] (3.35, 4.95) -- (4.35, 4.95) -- (4.35, 5.85) -| (12.8, 5.13);
+        \node[font=\scriptsize\bfseries, blue!75!black, fill=white, inner sep=1pt] at (8.4, 6.1)
+            {Fast-path (\texttt{syn\_zero=1}): \texttt{corr\_buf <= rx\_buf, fail <= 0}};
+
+        % Early Abort
+        \draw[->, dashed, red!75!black] (3.35, 3.3) -- (4.35, 3.3) |- (4.35, -0.3) -| (12.8, 4.47);
+        \draw[->, dashed, red!75!black] (Schien.south) |- (4.35, -0.3);
+        \draw[->, dashed, red!75!black] (Sforney.south) -- (7.0, -0.3);
+        \node[font=\scriptsize, red!75!black, fill=white, inner sep=1pt] at (7.5, -0.65)
+            {Early Abort (\texttt{bm\_fail} / \texttt{chien\_fail} / \texttt{forney\_fail}): \texttt{fail <= 1, corr\_buf <= rx\_buf}};
+    \end{tikzpicture}%
+    }
+    \caption{Lưu đồ máy trạng thái 12 trạng thái và hai luồng xử lý của \texttt{rs\_decoder}}
+    \label{fig:decoder-fsm}
+\end{figure}
+
+Thiết kế \texttt{rs\_decoder} tích hợp ba cơ chế tối ưu độ trễ và bảo vệ tính toàn vẹn dữ liệu:
+\begin{enumerate}
+    \item \textbf{Nhánh tắt không lỗi (\textit{Fast-path}):} Trong quá trình nhận 15 byte tại \texttt{S\_RECV}, dữ liệu đồng thời nạp vào mảng \texttt{rx\_buf} và khối \texttt{u\_syndrome}. Nếu tại \texttt{S\_WAIT\_SYN1} có \texttt{syn\_zero\_out = 1}, FSM bỏ qua toàn bộ 5 khối giải mã sau đó để nhảy thẳng sang \texttt{S\_OUT\_PREP}, giảm độ trễ từ byte nhận cuối tới \texttt{out\_valid} xuống còn \textbf{2 chu kỳ} (tổng thời gian xử lý 1 khối sạch là \textbf{34 chu kỳ}).
+    \item \textbf{Tái sử dụng \texttt{u\_syndrome} cho Re-verify:} Nhờ bộ dồn kênh điều khiển bởi \texttt{state == S\_VERIFY\_\allowbreak FEED}, thực thể \texttt{u\_\allowbreak syndrome} duy nhất được dùng lại để tính hội chứng của từ mã ứng viên \texttt{candidate\_buf} sau bước \texttt{error\_corrector}. Chỉ khi hội chứng lần 2 bằng 0 thì mạch mới hạ \texttt{fail = 0} và xuất \texttt{candidate\_buf}; nếu khác 0 (giải mã sai do $>T$ lỗi), mạch dựng \texttt{fail <= 1} và khôi phục bản nhận gốc \texttt{rx\_buf}.
+    \item \textbf{Thoát sớm (\textit{Early Abort}):} Mọi cờ \texttt{fail} từ BM, Chien Search hoặc Forney lập tức đưa FSM sang \texttt{S\_OUT\_PREP} với \texttt{fail <= 1}, tiết kiệm chu kỳ xử lý.
+\end{enumerate}
+
+Hoạt động chi tiết của 6 khối thành phần bên trong \texttt{rs\_decoder} (tổng hợp chu kỳ xử lý trong Bảng~\ref{tab:decoder-submodules}) như sau:
+\begin{itemize}
+    \item \textbf{\texttt{syndrome.v}:} FSM 2 trạng thái (\texttt{S\_IDLE}, \texttt{S\_RECV}) với 4 nhánh Horner song song ứng với $\beta_j = \alpha^j \in \{\texttt{0x01}, \texttt{0x02}, \texttt{0x04}, \texttt{0x08}\}$, cập nhật $\text{acc}[j] \leftarrow (\text{acc}[j]\cdot \beta_j) \oplus \texttt{data\_in}$ trong 15 chu kỳ nhận và xuất 32-bit \texttt{syn} kèm cờ \texttt{syn\_zero}.
+    \item \textbf{\texttt{berlekamp\_massey.v}:} FSM 4 trạng thái (\texttt{S\_IDLE}, \texttt{S\_DISC}, \texttt{S\_UPDATE}, \texttt{S\_FINISH}) lặp qua $q=0\dots 3$ (9 chu kỳ lõi, 11 chu kỳ wrapper) thực thi giải thuật Berlekamp--Massey \cite{berlekamp1968,massey1969}. Trong \texttt{S\_DISC}, mạch tính độ lệch $d = S_q \oplus \bigoplus_{j=1}^L C_j S_{q-j}$; trong \texttt{S\_UPDATE}, dùng \texttt{gf256\_inv(b)} tính $\text{scale} = d \cdot b^{-1}$ cập nhật $C(z)$, $B(z)$ và bậc $L$. Tại \texttt{S\_FINISH}, điều kiện \texttt{fail <= (!is\_syn\_all\_zero) \&\& (L == 0 || L > T)} chặn các đa thức vượt bậc $T=2$.
+    \item \textbf{\texttt{error\_evaluator.v}:} Tính tuần tự 4 hệ số $\Omega_q = \bigoplus_{j=0}^{\min(q,L)} \lambda_j S_{q-j}$ ($q=0\dots 3$) trong 4 chu kỳ lõi (6 chu kỳ wrapper) dùng mảng 4 bộ \texttt{gf256\_mul}.
+    \item \textbf{\texttt{chien\_search.v}:} FSM 2 trạng thái (\texttt{S\_IDLE}, \texttt{S\_RUN}) thực hiện tìm kiếm Chien \cite{chien1964}, khởi tạo $z_0 = \alpha^{-14} = \texttt{0x58}$ và nhân bước $\alpha = \texttt{0x02}$ để kiểm tra $\Lambda(z_i)=0$ tại 15 vị trí thực tế $i=0\dots 14$ trong 15 chu kỳ (17 chu kỳ wrapper). Nếu $\Lambda(z)$ có nghiệm rơi vào 240 vị trí rút gọn hoặc nghiệm bội, điều kiện \texttt{fail <= (found\_next != deg)} sẽ báo lỗi.
+    \item \textbf{\texttt{forney.v}:} Áp dụng thuật toán Forney \cite{forney1965}, cập nhật song song $X_i$ (từ $\alpha^{14} = \texttt{0x13}$, bước $\alpha^{-1}=\texttt{0x8E}$) và $z_i$ (từ \texttt{0x58}, bước $\alpha$) trong 15 chu kỳ (17 chu kỳ wrapper) để tính $E_i = X_i \cdot \Omega(z_i)/\Lambda'(z_i)$ với $\Lambda'(z_i) = \lambda_1 \oplus \lambda_3 z_i^2$. Khi $\Lambda'(z_i)=0$ tại vị trí lỗi (\texttt{err\_mask[i]=1}), cờ \texttt{fail} lập tức bật.
+    \item \textbf{\texttt{error\_corrector.v}:} Thực hiện phép XOR tuần tự $\texttt{corrected[i]} \leftarrow \texttt{rx[i]} \oplus \texttt{errors[i]}$ cho 15 byte (120 bit) trong 15 chu kỳ (17 chu kỳ wrapper).
+\end{itemize}
+
+\begin{table}[!htb]
+    \centering
+    \caption{Tổng hợp kiến trúc và số chu kỳ xử lý của 6 module giải mã trong \texttt{rs\_decoder}}
+    \label{tab:decoder-submodules}
+    \scriptsize
+    \setlength{\tabcolsep}{4pt}
+    \renewcommand{\arraystretch}{1.04}
+    \begin{tabularx}{\textwidth}{l c c >{\raggedright\arraybackslash}X}
+        \toprule
+        \textbf{Module thành phần} & \textbf{Chu kỳ lõi} & \textbf{Chu kỳ FSM} & \textbf{Đặc điểm phần cứng \& cơ chế an toàn} \\
+        \midrule
+        \texttt{syndrome} & 15 & 16 / 16 & 4 nhánh Horner ($\beta_j=\alpha^j$); dùng chung pha nhận \& Re-verify \\
+        \texttt{berlekamp\_massey} & 9 & 11 & Vòng lặp $q=0..3$; \texttt{fail} khi $L=0$ hoặc $L>2$ \\
+        \texttt{error\_evaluator} & 4 & 6 & Tích chập cắt cụt $q=0..3$ tính $\Omega(z)$ \\
+        \texttt{chien\_search} & 15 & 17 & Quét $z=\alpha^{-14}\dots 1$; \texttt{fail} khi số nghiệm $\neq L$ \\
+        \texttt{forney} & 15 & 17 & Tính $X_i \Omega(z_i)/\Lambda'(z_i)$; \texttt{fail} khi $\Lambda'(z_i)=0$ \\
+        \texttt{error\_corrector} & 15 & 17 & XOR sửa tuần tự 15 byte (120 bit) \\
+        Đợi, kiểm và xuất luồng & -- & 19 (18 FP) & Gồm \texttt{S\_IDLE}(1), \texttt{S\_WAIT\_SYN1}(1), \texttt{S\_VERIFY\_WAIT}(1), \texttt{S\_OUT\_PREP}(1), \texttt{S\_OUT}(15) \\
+        \midrule
+        \textbf{Tổng (Fast-path / Đủ chuỗi)} & -- & \textbf{34 / 119} & Tính từ lúc \texttt{start=1} ở \texttt{S\_IDLE} tới xung \texttt{done=1} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Thiết kế các khối phụ trợ Demo và Giao tiếp ngoại vi}
+\label{sec:demo-board}
+
+Các khối trong \texttt{rtl/demo/} và \texttt{rtl/board/} hoàn thiện vòng khép kín trên DE10-Lite:
+\begin{itemize}
+    \item \textbf{\texttt{error\_injector.v}:} FSM 3 trạng thái (\texttt{S\_IDLE}, \texttt{S\_PASS}, \texttt{S\_DRAIN}) đặt giữa \texttt{u\_\allowbreak encoder} và \texttt{u\_\allowbreak decoder}. Khi bắt đầu, khối chốt \texttt{enable = SW[9]}, \texttt{two\_\allowbreak errors = 1'b1} và \texttt{three\_\allowbreak errors = SW[7]}: nếu bật tiêm lỗi, luôn XOR mặt nạ \texttt{8'h55} tại vị trí 0 và \texttt{8'hA6} tại vị trí 14; nếu \texttt{SW[7]=1}, tiêm thêm lỗi thứ 3 mặt nạ \texttt{8'h3C} tại vị trí 7.
+    \item \textbf{\texttt{result\_checker.v} và \texttt{cycle\_counter.v}:} Trong \texttt{top\_de10\_lite}, \texttt{u\_checker} chuyển sang trạng thái \texttt{S\_MEM\_\allowbreak CHK} (do tham số \texttt{stream\_mode = 0}) để so sánh 11 byte giữa \texttt{u\_buf\_\allowbreak input} và \texttt{u\_buf\_\allowbreak output}, còn \texttt{u\_counter} đếm số chu kỳ 32-bit ở chế độ xung từ \texttt{S\_START} tới \texttt{decoder\_done}. Do các ngõ ra của hai khối gỡ lỗi này không nối ra chân ngoại vi, Quartus tối ưu lược bỏ phần logic không tải khi Place \& Route. Lưu ý rằng \texttt{tb\_top.v} chỉ kiểm thử giao tiếp thông qua các chân I/O ngoài (\texttt{MAX10\_CLK1\_50}, \texttt{KEY}, \texttt{SW}, \texttt{LEDR}, \texttt{HEX0}, \texttt{HEX1}) mà không kiểm tra tín hiệu nội bộ của \texttt{u\_checker} hay \texttt{u\_counter}; đồng thời nhật ký biên dịch \texttt{sim/transcript} ghi nhận 2 cảnh báo thiếu kết nối cổng \texttt{stream\_last} tại \texttt{top\_de10\_lite.v:298} (17 trên 18 cổng của \texttt{u\_checker}), nhưng không ảnh hưởng tới hoạt động ở chế độ bộ nhớ.
+    \item \textbf{\texttt{reset\_sync.v}:} Mạch đồng bộ 2 tầng FF mang thuộc tính \texttt{SYNCHRONIZER\_\allowbreak IDENTIFICATION FORCED\_IF\_\allowbreak ASYNCHRONOUS}, nhận \texttt{KEY[0]} để phát \texttt{rst\_n} hạ thấp bất đồng bộ tức thì và nhả đồng bộ theo xung nhịp 50\,MHz.
+    \item \textbf{\texttt{input\_control.v}:} Đồng bộ hóa 2 tầng FF cho \texttt{KEY[1]} và \texttt{SW[9:0]}, sau đó dùng bộ đếm 19 bit (\texttt{\$clog2(500\_000)}) lọc dội 10\,ms trước khi xuất xung 1 chu kỳ \texttt{confirm\_\allowbreak pulse} và chốt \texttt{sw\_\allowbreak latched} (Đoạn mã~\ref{lst:input-control}).
+    \item \textbf{\texttt{display\_control.v} và \texttt{hex\_decoder.v}:} \texttt{display\_control} nối \texttt{core\_busy} ra \texttt{LEDR[0]} và chốt trạng thái \texttt{done\_latched}/\texttt{fail\_latched} ra \texttt{LEDR[1:2]} theo \texttt{clear\_status}; hai bộ \texttt{hex\_decoder} giải mã 2 nibble thành ký tự 7 đoạn Anode chung tắt dấu chấm \texttt{DP = 1'b1}.
+\end{itemize}
+
+\begin{lstlisting}[style=verilogstyle, caption={Mạch đồng bộ 2 tầng FF và bộ lọc dội 10\,ms trong \texttt{rtl/board/input\_control.v}}, label={lst:input-control}]
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            key_meta <= 1'b1;
+            key_sync <= 1'b1;
+
+            sw_meta <= 10'b0;
+            sw_sync <= 10'b0;
+        end
+        else begin
+            key_meta <= key_confirm_n;
+            key_sync <= key_meta;
+
+            sw_meta <= sw_raw;
+            sw_sync <= sw_meta;
+        end
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            key_stable <= 1'b1;
+            debounce_count <= {COUNTER_WIDTH{1'b0}};
+
+            confirm_pulse <= 1'b0;
+            sw_latched <= 10'b0;
+        end
+        else begin 
+            confirm_pulse <= 1'b0;
+
+            if(key_sync == key_stable) begin
+                debounce_count <= {COUNTER_WIDTH{1'b0}};
+            end
+            else begin
+                if(debounce_count == DEBOUNCE_CYCLES - 1) begin
+                    debounce_count <= {COUNTER_WIDTH{1'b0}};
+                    key_stable <= key_sync;
+
+                    if(key_sync == 1'b0) begin
+                        confirm_pulse <= 1'b1;
+                        sw_latched <= sw_sync;
+                    end
+                end 
+                else begin
+                    debounce_count <= debounce_count + 1'b1;
+                end
+            end
+        end
+    end
+\end{lstlisting}
+
+\section{Kiểm thử mô phỏng (Testbench), Tổng hợp Quartus \& Thực nghiệm phần cứng}
+\label{sec:verif-synth}
+
+\subsection{Kiểm thử mô phỏng tự động qua 10 Testbench và Phân tích dạng sóng}
+\label{subsec:tb-wave}
+
+Thiết kế RTL được kiểm chứng chéo với mô hình toán học Python (\texttt{model/rs\_reference.py}, \texttt{model/gf256\_model.py}) và thư viện hàm tham chiếu \texttt{tb/rs\_tb\_ref.vh}. Dự án cung cấp tệp danh sách \texttt{sim/rtl\_files.f} và kịch bản Tcl \texttt{sim/run.do} (độ phân giải \texttt{-t 1ps}) để biên dịch và quan sát dạng sóng trên ModelSim/QuestaSim. Trong nhật ký thực thi tại chỗ \texttt{sim/transcript}, bước tối ưu hóa \texttt{vopt} trên \texttt{work.tb\_top} hoàn tất với \texttt{Errors: 0, Warnings: 2} (cảnh báo thiếu kết nối \texttt{stream\_last} tại \texttt{u\_checker}, vô hại khi \texttt{stream\_mode = 0}), nhưng trình mô phỏng \texttt{vsim} chưa khởi chạy được trên máy trạm hiện tại do thiếu giấy phép \texttt{intelqsimstarter}. Vì vậy, số liệu vượt qua toàn bộ 10 bài kiểm thử trong Bảng~\ref{tab:tb-summary} được tổng hợp theo kết quả mô phỏng Icarus Verilog đã lưu trữ trong dự án.
+
+Qua đối soát trực tiếp mã nguồn 10 tệp trong thư mục \texttt{tb/}, tổng số lượt kiểm tra thực tế là \textbf{105.139 lượt với 0 lỗi}: riêng \texttt{tb\_top.v} với tham số mặc định \texttt{CHECK\_HEX\_ECHO = 0} thực hiện \textbf{287} lượt kiểm tra \texttt{n\_chk} (trong khi bản tóm tắt \texttt{README.md} liệt kê \texttt{tb\_top} là 323 lượt -- ứng với tổng các dòng là 105.175 -- nhưng dòng tổng hợp cuối bảng lại ghi nhầm thành 102.175). Cơ chế kiểm chứng của từng testbench gồm:
+\begin{itemize}
+    \item \textbf{\texttt{tb\_gf256\_mul} (72.820 lượt):} Kiểm tra bậc phần tử nguyên thủy $\alpha^{255}=1$, đối chiếu vét cạn $256\times 256=65.536$ cặp nhân, kiểm tra tính chất với $0$ và $1$, cùng $2.000$ bộ ba ngẫu nhiên kiểm chứng tính giao hoán, phân phối và kết hợp.
+    \item \textbf{\texttt{tb\_gf256\_inv} (1.538 lượt):} Kiểm tra trường hợp \texttt{a = 0x00} (\texttt{valid=0, zero\_err=1}), duyệt toàn bộ $255$ phần tử khác không kiểm tra $a\cdot a^{-1}=\texttt{0x01}$, tính song ánh và tính đối hợp $(a^{-1})^{-1}=a$.
+    \item \textbf{\texttt{tb\_rs\_encoder} (921 lượt):} Kiểm tra từ mã chuẩn \texttt{0x00..0x0A} (ra parity \texttt{C0 8F 28 6C}), các khối biên toàn \texttt{0x00}/\texttt{0xFF}/xung đơn vị, $150$ khối ngẫu nhiên kèm khoảng nghỉ đầu vào (\textit{gap}) và \textit{backpressure}, bỏ qua \texttt{start} khi \texttt{busy} và reset giữa khối.
+    \item \textbf{\texttt{tb\_syndrome} (3.341 lượt):} Kiểm chứng mẫu chuẩn (\texttt{F3 60 0D 24}), $20$ khối hợp lệ ngẫu nhiên (\texttt{syn\_zero=1}), $15\times 15$ mẫu 1 lỗi, $105$ cặp 2 lỗi (gồm hai lỗi bằng nhau làm $S_0=0$), \textbf{100 khối nhận \texttt{y} ngẫu nhiên và 60 khối tiêm 3--4 lỗi ($>T$)}, cùng reset giữa khối.
+    \item \textbf{\texttt{tb\_berlekamp\_massey} (10.437 lượt):} Kiểm chứng trực tiếp nghiệm $\Lambda(z)$ cho $S=0$, 1 lỗi ($15\times 24$ mẫu), $105$ cặp $\times 4$ mẫu 2 lỗi, $150$ mẫu 3--4 lỗi, $200$ vector syndrome ngẫu nhiên, mẫu chỉ có $S_0\neq 0$ và reset giữa phép tính.
+    \item \textbf{\texttt{tb\_error\_evaluator} (2.971 lượt):} Kiểm tra đa thức $\Omega(z)$ với 1 lỗi ($\Omega_0=E$), $105$ cặp 2 lỗi ($\deg\Omega < L$ và $\Omega_0=E_1\oplus E_2$), $100$ vector $\Lambda(z)$ lấy từ \texttt{r\_bm} và $300$ bộ $(S,\Lambda)$ ngẫu nhiên bậc $L=0..R$.
+    \item \textbf{\texttt{tb\_chien\_search} (2.834 lượt):} Xác minh mặt nạ vị trí lỗi cho $15$ mẫu 1 lỗi, $105$ cặp 2 lỗi, các kịch bản 1 hoặc 2 nghiệm rơi vào 240 vị trí rút gọn đầu buộc bật \texttt{fail=1}, và $300$ đa thức ngẫu nhiên bậc $L=1..T$.
+    \item \textbf{\texttt{tb\_forney} (5.525 lượt):} Kiểm tra $E_i$ trên $15\times 37$ mẫu 1 lỗi, $105\times 3$ cặp 2 lỗi, mẫu biên, ngoại lệ $\Lambda'(z_i)=0 \to \texttt{fail=1}$ và phục hồi trạng thái sau \texttt{fail}/reset.
+    \item \textbf{\texttt{tb\_rs\_decoder} (4.465 lượt):} Thử nghiệm khép kín luồng \textit{Fast-path}, 1--2 lỗi, lỗi biên (đầu, cuối, parity, giáp ranh, 1-bit, 8-bit), $200$ mẫu 3--4 lỗi và $100$ từ ngẫu nhiên kiểm tra Re-verify, $60$ mẫu \textit{gap $\times$ backpressure} và reset khi đang nhận/xử lý/bị chặn.
+    \item \textbf{\texttt{tb\_top} (287 lượt khi \texttt{CHECK\_HEX\_ECHO=0}):} Chỉ kiểm tra giao tiếp trên các chân I/O ngoài của \texttt{top\_de10\_lite} (\texttt{MAX10\_CLK1\_50}, \texttt{KEY}, \texttt{SW}, \texttt{LEDR}, \texttt{HEX0}, \texttt{HEX1}), gồm lọc nhiễu xung 5 chu kỳ trên \texttt{KEY[1]}, bộ đếm chống dội thực $500.000$ chu kỳ tại 50\,MHz, reset khi đang bận (\texttt{LEDR[0]=1}) và đủ 3 kịch bản 0/2/3 lỗi với chuỗi \texttt{0x00..0x0A}.
+\end{itemize}
+
+\begin{table}[!htb]
+    \centering
+    \caption{Tổng hợp kết quả kiểm thử toàn bộ 10 Testbench RTL và hệ thống}
+    \label{tab:tb-summary}
+    \scriptsize
+    \setlength{\tabcolsep}{3.5pt}
+    \renewcommand{\arraystretch}{1.03}
+    \begin{tabularx}{\textwidth}{l r c >{\raggedright\arraybackslash}X}
+        \toprule
+        \textbf{Tên Testbench} & \textbf{Số lượt} & \textbf{Kết quả} & \textbf{Phạm vi bao phủ kiểm thử chính} \\
+        \midrule
+        \texttt{tb\_gf256\_mul} & 72.820 & PASS (0 lỗi) & Đủ $256\times 256=65.536$ cặp, tính giao hoán/phân phối/kết hợp (2.000 mẫu) \\
+        \texttt{tb\_gf256\_inv} & 1.538 & PASS (0 lỗi) & Vét cạn $0\dots 255$, $a\cdot a^{-1}=1$, song ánh, cờ \texttt{zero\_err/valid} \\
+        \texttt{tb\_rs\_encoder} & 921 & PASS (0 lỗi) & Vector \texttt{0x00..0x0A}, 150 khối kèm backpressure, reset giữa chừng \\
+        \texttt{tb\_syndrome} & 3.341 & PASS (0 lỗi) & 0 lỗi, $15\times 15$ mẫu 1 lỗi, 105 cặp 2 lỗi, 100 khối \texttt{y} ngẫu nhiên, 60 khối 3--4 lỗi \\
+        \texttt{tb\_berlekamp\_massey} & 10.437 & PASS (0 lỗi) & Vét cạn 1 lỗi, 105 cặp $\times 4$ mẫu 2 lỗi, 150 mẫu $>T$, 200 ngẫu nhiên \\
+        \texttt{tb\_error\_evaluator} & 2.971 & PASS (0 lỗi) & Đủ mẫu 1 lỗi, 105 cặp 2 lỗi ($\deg\Omega<L$), 300 mẫu ngẫu nhiên \\
+        \texttt{tb\_chien\_search} & 2.834 & PASS (0 lỗi) & 15 mẫu 1 lỗi, 105 cặp 2 lỗi, nghiệm ngoài miền rút gọn ($\to\texttt{fail=1}$) \\
+        \texttt{tb\_forney} & 5.525 & PASS (0 lỗi) & $15\times 37$ mẫu 1 lỗi, $105\times 3$ cặp 2 lỗi, bắt ngoại lệ $\Lambda'(z_i)=0$ \\
+        \texttt{tb\_rs\_decoder} & 4.465 & PASS (0 lỗi) & Fast-path, đủ 1--2 lỗi, 300 mẫu $>T$ (Re-verify), 60 mẫu backpressure \\
+        \texttt{tb\_top} & 287 & PASS (0 lỗi) & Kiểm tra I/O ngoài: debounce 500.000 chu kỳ, lọc nhiễu 5 chu kỳ, 0/2/3 lỗi \\
+        \midrule
+        \textbf{Tổng cộng} & \textbf{105.139} & \textbf{100\% PASS} & \textbf{0 lỗi trên 10 testbench} (ghi chú: \texttt{README.md} ghi \texttt{tb\_top}=323, tổng=102.175) \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+{\sloppy
+Để hỗ trợ gỡ lỗi trực quan, tệp cấu hình dạng sóng \texttt{sim/wave.do} tổ chức tín hiệu thành \textbf{10 nhóm chức năng cốt lõi của luồng xử lý và bộ giải mã} cùng \textbf{1 nhóm giao tiếp bo mạch}:
+(1)~\textit{CLOCK \& RESET} (\texttt{clk}, \texttt{rst\_n}, \texttt{start});
+(2)~\textit{STREAMING I/O} (\texttt{in\_valid}, \texttt{in\_ready}, \texttt{data\_in}, \texttt{out\_valid}, \texttt{out\_ready}, \texttt{out\_last}, \texttt{data\_out});
+(3)~\textit{STATUS SIGNALS} (\texttt{busy}, \texttt{done}, \texttt{fail});
+(4)~\textit{DECODER FSM \& REGS} (\texttt{state}, các bộ đếm \texttt{rx\_cnt}, \texttt{out\_cnt}, \texttt{ver\_cnt} và ba bộ đệm \texttt{rx\_buf}, \texttt{candidate\_buf}, \texttt{corr\_buf});
+(5)~\textit{SYNDROME} (\texttt{syn\_start}, \texttt{syn\_busy}, \texttt{syn\_done}, \texttt{syn\_zero}, \texttt{syn\_latched});
+(6)~\textit{BERLEKAMP--MASSEY} (\texttt{bm\_start}, \texttt{bm\_busy}, \texttt{bm\_done}, \texttt{deg\_lambda}, \texttt{lambda}, \texttt{bm\_fail});
+(7)~\textit{ERROR EVALUATOR} (\texttt{ee\_start}, \texttt{ee\_busy}, \texttt{ee\_done}, \texttt{omega});
+(8)~\textit{CHIEN SEARCH} (\texttt{chien\_start}, \texttt{chien\_busy}, \texttt{chien\_done}, \texttt{chien\_err\_cnt}, \texttt{chien\_mask}, \texttt{chien\_fail});
+(9)~\textit{FORNEY} (\texttt{forney\_start}, \texttt{forney\_busy}, \texttt{forney\_done}, \texttt{forney\_val}, \texttt{forney\_fail});
+(10)~\textit{ERROR CORRECTOR} (\texttt{ec\_start}, \texttt{ec\_busy}, \texttt{ec\_done}, \texttt{ec\_corr\_out});
+và nhóm (11)~\textit{BOARD DE10-LITE (\texttt{tb\_top})} theo dõi trực tiếp các cổng vật lý \texttt{MAX10\_CLK1\_50}, \texttt{KEY}, \texttt{SW}, \texttt{LEDR}, \texttt{HEX1} và \texttt{HEX0}.
+\par}
+
+\subsection{Kết quả tổng hợp Quartus Prime 25.1std.0 và Phân tích thời gian tĩnh}
+\label{subsec:quartus-sta}
+
+Quá trình biên dịch dự án \texttt{quartus/ReedSolomon.qpf} hoàn tất trong 48 giây, sinh tệp cấu hình \texttt{quartus/\allowbreak output\_files/\allowbreak ReedSolomon.sof}. Số liệu sau Place \& Route trích từ \texttt{ReedSolomon.fit.\allowbreak summary} và \texttt{ReedSolomon.fit.rpt} (Bảng~\ref{tab:quartus-res}) cho thấy hệ thống chiếm \textbf{4.599 / 49.760 LEs (9\%)}, \textbf{2.035 thanh ghi (4\%)}, \textbf{346 / 3.110 LABs (11\%)}, \textbf{32 / 360 chân I/O (9\%)}, \textbf{0 M9K}, \textbf{0 bộ nhân $9\times 9$} và \textbf{0 UFM}. Mức sử dụng thực tế cao hơn ước tính sơ bộ ban đầu ($3\dots 6\%$ LEs, $800\dots 1.200$ FF) do toàn bộ bộ đệm 120-bit trong \texttt{rs\_decoder} giữ trên flip-flop để đọc 0 chu kỳ trễ và các FSM được tổng hợp dạng \textit{One-Hot}.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Báo cáo tài nguyên phần cứng thực tế sau Place \& Route (Quartus Prime 25.1std.0)}
+    \label{tab:quartus-res}
+    \scriptsize
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.02}
+    \begin{tabularx}{\textwidth}{l r r >{\raggedright\arraybackslash}X}
+        \toprule
+        \textbf{Module / Hạng mục} & \textbf{LEs} & \textbf{FFs} & \textbf{Tỷ lệ \& ghi chú kiến trúc} \\
+        \midrule
+        \textbf{Toàn hệ thống (\texttt{top\_de10\_lite})} & \textbf{4.599} & \textbf{2.035} & \textbf{9\% LEs}, 3.669 hàm tổ hợp (7\%), 346 LABs (11\%) \\
+        \quad \texttt{u\_decoder} (\texttt{rs\_decoder}) & 4.026 & 1.658 & Chiếm 87,5\% tổng LEs (gồm bộ đệm 120-bit \& FSM) \\
+        \qquad -- \texttt{u\_bm} (\texttt{berlekamp\_massey}) & 1.114 & 188 & Gồm \texttt{u\_binv} (208 LEs) và 10 khối \texttt{gf256\_mul} \\
+        \qquad -- \texttt{u\_forney} (\texttt{forney}) & 831 & 207 & Gồm \texttt{u\_inv} (211 LEs) và mạch đánh giá Horner \\
+        \qquad -- \texttt{u\_ec} / \texttt{u\_chien} / \texttt{u\_ee} & 434 / 391 / 382 & 366 / 78 / 104 & Sửa lỗi, Chien Search và Error Evaluator \\
+        \qquad -- \texttt{u\_syndrome} (\texttt{syndrome}) & 85 & 71 & Tái sử dụng chung cho pha nhận và Re-verify \\
+        \quad \texttt{u\_controller} / \texttt{u\_encoder} & 186 / 101 & 26 / 53 & Điều phối trung tâm và LFSR mã hóa \\
+        \quad \texttt{u\_buf\_output} / \texttt{u\_buf\_input} & 147 / 137 & 124 / 101 & Bộ đệm thanh ghi 15 byte và 11 byte \\
+        \quad Ngoại vi (\texttt{input, injector, display, reset}) & 106 & 73 & Đồng bộ hóa, chống dội, tiêm lỗi và hiển thị \\
+        \midrule
+        \textbf{Chân I/O / M9K / DSP 9$\times$9} & \multicolumn{2}{c}{\textbf{32/360} \quad | \quad \textbf{0 / 0}} & 13 Input, 19 Output (9\%); 0\% M9K, 0\% DSP và 0\% PLL \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Kết quả phân tích thời gian tĩnh TimeQuest (\texttt{ReedSolomon.sta.rpt}, Bảng~\ref{tab:sta-results}) \cite{quartussta} cho thấy thiết kế đạt yêu cầu định thời ở 50\,MHz tại mọi góc phân tích: ở góc Slow $1200\text{ mV } 85^{\circ}\text{C}$, $F_{\max} = 51{,}02\text{ MHz}$ và \textit{Setup Slack} $= +0{,}398\text{ ns}$ (\texttt{TNS = 0,000 ns}). Cần lưu ý hai điểm kỹ thuật trong báo cáo STA: (1) tệp \texttt{ReedSolomon.sta.rpt} không xuất danh sách đường dẫn chi tiết (\texttt{report\_timing}), nên nhận định đường găng thời gian nằm qua chuỗi tổ hợp \texttt{gf256\_inv} nối tiếp \texttt{gf256\_mul} trong \texttt{berlekamp\_massey} và \texttt{forney} được suy luận từ kiến trúc RTL kết hợp với mức $F_{\max} = 51{,}02\text{ MHz}$; (2) mục \textit{Metastability Summary} ghi nhận \texttt{Worst-Case MTBF = 1e+09 years} trên 12 chuỗi đồng bộ (chuỗi ngắn nhất 2 thanh ghi), nhưng kèm cảnh báo \textbf{\texttt{Fraction of Chains for which MTBFs Could Not be Calculated: 0.917}} (11/12 chuỗi không tính được MTBF do thiếu thông số tốc độ chuyển mạch đầu vào bất đồng bộ), nên giá trị MTBF định danh không áp dụng cho toàn bộ 12 chuỗi.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Kết quả phân tích thời gian tĩnh (TimeQuest STA) tại xung nhịp 50\,MHz}
+    \label{tab:sta-results}
+    \footnotesize
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l c c c c c}
+        \toprule
+        \textbf{Góc phân tích (Corner)} & \textbf{$F_{\max}$ (MHz)} & \textbf{Setup Slack} & \textbf{Hold Slack} & \textbf{Rec. / Rem. (ns)} & \textbf{Min Pulse (ns)} \\
+        \midrule
+        Slow 1200\,mV 85\,$^{\circ}\text{C}$ & 51,02 & $+0{,}398\text{ ns}$ & $+0{,}341\text{ ns}$ & $+16{,}638$ / $+2{,}350$ & $+9{,}624$ \\
+        Slow 1200\,mV 0\,$^{\circ}\text{C}$ & 55,42 & $+1{,}955\text{ ns}$ & $+0{,}305\text{ ns}$ & $+16{,}923$ / $+2{,}124$ & $+9{,}647$ \\
+        Fast 1200\,mV 0\,$^{\circ}\text{C}$ & -- & $+11{,}687\text{ ns}$ & $+0{,}148\text{ ns}$ & $+18{,}285$ / $+1{,}182$ & $+9{,}304$ \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
+
+\subsection{Quy trình nạp cấu hình và Thực nghiệm phần cứng trên DE10-Lite}
+\label{subsec:hw-demo}
+
+Quy trình nạp và kiểm chứng thực nghiệm trên kit DE10-Lite được thực hiện theo các bước sau:
+\begin{enumerate}
+    \item \textbf{Nạp tệp cấu hình JTAG:} Kết nối bo mạch qua cáp USB Type-B tới máy tính; mở \textbf{Quartus Programmer}, chọn \textit{Hardware Setup $\rightarrow$ USB-Blaster [USB-0]}, đặt chế độ \texttt{JTAG}, nạp tệp \texttt{quartus/output\_files/ReedSolomon.sof}, đánh dấu \textit{Program/Configure} và nhấn \textit{Start} cho đến khi báo \texttt{100\% (Successful)}.
+    \item \textbf{Nhập 11 byte dữ liệu (\texttt{SW[8] = 0}):} Gạt toàn bộ công tắc xuống mức 0, sau đó lần lượt đặt giá trị nhị phân từ \texttt{0x00} đến \texttt{0x0A} lên \texttt{SW[7:0]} và nhấn \texttt{KEY[1]} để xác nhận từng byte; đèn \texttt{HEX1:HEX0} phản hồi trực tiếp giá trị \texttt{SW[7:0]} đang chọn, còn \texttt{LEDR[2:0]} giữ \texttt{3'b000}.
+    \item \textbf{Chạy và kiểm tra 4 kịch bản thực nghiệm (\texttt{SW[8] = 1}):}
+    \begin{itemize}
+        \item \textit{Kịch bản 1 -- 0 lỗi (\texttt{SW[9]=0}):} Nhấn \texttt{KEY[1]} để chạy qua \textit{Fast-path}. Đèn báo \texttt{LEDR[2:0] = 3'b010} (\textit{Done=1, Fail=0}); điều chỉnh \texttt{SW[3:0]} từ $0\dots 14$ hiển thị đúng 11 byte dữ liệu \texttt{00..0A} và 4 byte parity \texttt{C0, 8F, 28, 6C}.
+        \item \textit{Kịch bản 2 -- 2 lỗi trong ngưỡng (\texttt{SW[9]=1, SW[7]=0}):} Nhấn \texttt{KEY[1]}; bộ tiêm lỗi XOR \texttt{0x55} tại vị trí 0 và \texttt{0xA6} tại vị trí 14. Bộ giải mã tự động khôi phục đúng khối ban đầu (\texttt{LEDR = 3'b010}); kiểm tra tại \texttt{SW[3:0]=0} và \texttt{14} hiển thị \texttt{00} và \texttt{6C}.
+        \item \textit{Kịch bản 3 -- 3 lỗi vượt ngưỡng (\texttt{SW[9]=1, SW[7]=1}):} Nhấn \texttt{KEY[1]}; khối tiêm lỗi chèn thêm \texttt{0x3C} tại vị trí 7. Quá trình Re-verify/BM phát hiện vượt ngưỡng $T=2$, bật \texttt{LEDR = 3'b110} (\textit{Fail=1}) và giữ nguyên dữ liệu nhận (tại \texttt{SW[3:0]=0} hiển thị \texttt{55}).
+        \item \textit{Kịch bản 4 -- Reset tức thời (\texttt{KEY[0]}):} Nhấn \texttt{KEY[0]} tại thời điểm bất kỳ đưa ngay \texttt{LEDR[2:0]} về \texttt{3'b000} và đặt lại trạng thái hệ thống.
+    \end{itemize}
+\end{enumerate}
+
+
+% ============================================================================
+% PHAN CUOI: KET LUAN VA TAI LIEU THAM KHAO
+% ============================================================================
+\chapter*{Kết luận và Hướng phát triển}
+\phantomsection
+\addcontentsline{toc}{chapter}{Kết luận và Hướng phát triển}
+\markboth{Kết luận và Hướng phát triển}{}
+\label{ch:conclusion}
+
+Đồ án đã thiết kế, kiểm chứng mô phỏng và triển khai thực tế hệ thống mã hóa -- giải mã Reed--Solomon $\text{RS}(15,11)$ trên kit FPGA Terasic DE10-Lite (\texttt{10M50DAF484C7G}). Ba kết quả chính gồm: (1) kiến trúc RTL 21 tệp Verilog phân tầng theo giao thức \texttt{valid}/\texttt{ready} có \textit{backpressure}; (2) kiểm chứng chéo với mô hình Python qua 10 testbench đạt \textbf{105.139 lượt kiểm tra (0 lỗi)} theo kết quả mô phỏng Icarus Verilog đã lưu trữ; và (3) tổng hợp trên Quartus Prime \texttt{25.1std.0} tiêu thụ \textbf{4.599 LEs (9\%)}, \textbf{2.035 FF (4\%)}, $0\%$ M9K/DSP và đạt $F_{\max} = 51{,}02\text{ MHz}$ ở tần số hệ thống 50\,MHz.
+
+\subsection*{Đánh giá ưu điểm và hạn chế}
+Về ưu điểm, hệ thống có nhánh tắt \textit{Fast-path} (giảm độ trễ sau byte cuối xuống 2 chu kỳ khi $S=0$), tái sử dụng khối \texttt{u\_syndrome} cho pha Re-verify nhằm loại bỏ giải mã sai thầm lặng khi số lỗi $>2$, cùng mạch đồng bộ hóa 2 tầng FF cho các tín hiệu điều khiển ngoại vi. Về hạn chế, thiết kế hiện tại chưa hỗ trợ giải mã xóa (\textit{Erasure}); xử lý tuần tự 1 symbol/chu kỳ và đường găng tổ hợp suy luận qua \texttt{gf256\_inv} nối tiếp \texttt{gf256\_mul} giới hạn $F_{\max} = 51{,}02\text{ MHz}$ (Setup Slack $+0{,}398\text{ ns}$); báo cáo STA cho thấy tỷ lệ chuỗi chưa tính được MTBF là $0{,}917$ (11/12 chuỗi); đồng thời tham số $(N,K,R)$ cấu hình tĩnh và hai khối giám sát \texttt{result\_checker}, \texttt{cycle\_counter} chưa đấu ra chân I/O nên bị lược bỏ khi Place \& Route.
+
+\subsection*{Hướng phát triển tiếp theo}
+Hệ thống có thể mở rộng theo ba hướng kỹ thuật trực tiếp:
+\begin{enumerate}
+    \item \textbf{Pipeline hóa khối BM/Forney để nâng $F_{\max}$ trên 100\,MHz:} Chèn thanh ghi đệm sau LUT nghịch đảo hoặc chuyển sang thuật toán Berlekamp--Massey không phép nghịch đảo (\textit{Inversionless BM}) nhằm cắt ngắn đường găng tổ hợp và hỗ trợ xử lý khung liên tiếp.
+    \item \textbf{Giải mã Xóa (\textit{Errors-and-Erasures}) và xuất telemetry qua UART:} Mở rộng khả năng khôi phục lên $2t + \rho \le 4$ và khai thác cặp chân \texttt{PIN\_V10}/\texttt{PIN\_W10} trên header \texttt{JP1} để gửi từ mã, giá trị đếm chu kỳ từ \texttt{cycle\_counter} và kết quả từ \texttt{result\_checker} lên máy tính.
+    \item \textbf{Nâng cấp lên $\text{RS}(255,239)$ dùng bộ nhớ M9K:} Thay thế bộ đệm thanh ghi sang RAM nhúng \textbf{M9K} trên MAX 10 và song song hóa các nhánh tìm kiếm Chien Search để đáp ứng các chuẩn truyền thông khối lớn.
+\end{enumerate}
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{Tài liệu tham khảo}
+\markboth{Tài liệu tham khảo}{Tài liệu tham khảo}
+
+\begin{thebibliography}{99}
+
+\bibitem{reed1960}
+I.~S.~Reed và G.~Solomon, ``Polynomial Codes over Certain Finite Fields,'' \textit{Journal of the Society for Industrial and Applied Mathematics (SIAM)}, tập~8, số~2, tr.~300--304, tháng~6/1960.
+
+\bibitem{berlekamp1968}
+E.~R.~Berlekamp, \textit{Algebraic Coding Theory}, McGraw-Hill Book Company, New York, 1968.
+
+\bibitem{massey1969}
+J.~L.~Massey, ``Shift-Register Synthesis and BCH Decoding,'' \textit{IEEE Transactions on Information Theory}, tập~IT-15, số~1, tr.~122--127, tháng~1/1969.
+
+\bibitem{chien1964}
+R.~T.~Chien, ``Cyclic Decoding Procedures for Bose--Chaudhuri--Hocquenghem Codes,'' \textit{IEEE Transactions on Information Theory}, tập~IT-10, số~4, tr.~357--363, tháng~10/1964.
+
+\bibitem{forney1965}
+G.~D.~Forney, ``On Decoding BCH Codes,'' \textit{IEEE Transactions on Information Theory}, tập~IT-11, số~4, tr.~549--557, tháng~10/1965.
+
+\bibitem{lincostello2004}
+S.~Lin và D.~J.~Costello, \textit{Error Control Coding: Fundamentals and Applications}, ấn bản lần~2, Pearson Prentice Hall, Upper Saddle River, NJ, 2004.
+
+\bibitem{morelos2006}
+R.~H.~Morelos-Zaragoza, \textit{The Art of Error Correcting Coding}, ấn bản lần~2, John Wiley \& Sons, Chichester, UK, 2006.
+
+\bibitem{intelmax10}
+Intel Corporation, \textit{Intel MAX 10 FPGA Device Datasheet}, Tài liệu kỹ thuật \texttt{M10-DATASHEET}, Intel Programmable Solutions Group, 2022.
+
+\bibitem{de10lite}
+Terasic Inc., \textit{DE10-Lite User Manual}, Tài liệu hướng dẫn sử dụng kit Terasic DE10-Lite (\texttt{10M50DAF484C7G}), Hsinchu, Đài Loan, 2020.
+
+\bibitem{quartussta}
+Intel Corporation, \textit{Intel Quartus Prime Standard Edition User Guide: Timing Analyzer}, Phiên bản \texttt{25.1std.0}, Intel FPGA Documentation, 2025.
+
+\bibitem{mathworksrs}
+The MathWorks, Inc., \textit{HDL Reed--Solomon Encoder and Decoder Reference Architecture}, \textit{Communications Toolbox HDL Support Documentation}, Natick, MA, 2024.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,34 +1,9 @@
-module top_de10_lite (
-    input  wire       MAX10_CLK1_50,
-    input  wire [1:0] KEY,
-    input  wire [9:0] SW,
-    output wire [2:0] LEDR,
-    output wire [7:0] HEX0,
-    output wire [7:0] HEX1
-);
-    wire clk = MAX10_CLK1_50;
-    wire rst_n;
+# Ghi chú kiến trúc nhanh: RS(5,3) trên GF(8)
 
-    // 1. Dong bo nut nhan KEY[0] thanh tin hieu reset noi bo rst_n
-    reset_sync u_reset_sync (
-        .clk       (clk),
-        .key_rst_n (KEY[0]),
-        .rst_n     (rst_n)
-    );
-
-    // 2. Noi clk va rst_n vao khoi rs_encoder
-    rs_encoder u_rs_encoder (
-        .clk       (clk),
-        .rst_n     (rst_n),
-        .start     (enc_start),
-        .data_in   (enc_data_in),
-        .in_valid  (enc_in_valid),
-        .in_ready  (enc_in_ready),
-        .data_out  (enc_data_out),
-        .out_valid (enc_out_valid),
-        .out_ready (enc_out_ready),
-        .out_last  (enc_out_last),
-        .busy      (enc_busy),
-        .done      (enc_done)
-    );
-endmodule
+- Trường Galois: GF(8), $m = 3$ bit, $p(x) = x^3 + x + 1$ (`4'b1011`), $\alpha = 2$.
+- Mã Reed-Solomon: RS(5,3) với $N = 5$, $K = 3$, $R = 2$, $T = 1$, $g(x) = x^2 + 3x + 2$.
+- Giao diện DE10-Lite:
+  - `SW[2:0]`: nhập giá trị symbol (`0..7`), chốt bằng `KEY[1]`.
+  - `SW[9]`: `0` = chế độ nhập 3 symbol thông tin và giải mã đúng; `1` = chế độ nhập tối đa 3 lỗi vào 3 symbol cuối (`SW[8]=1` để kết thúc sớm sau 1 hoặc 2 lỗi).
+  - `HEX2`, `HEX1`, `HEX0`: hiển thị đồng thời 3 symbol thông tin (`0..7`).
+  - `LEDR[9:0]`: sáng 1 đèn theo giá trị `SW[2:0]` khi nhập; sau khi giải mã ở chế độ lỗi: tắt hết nếu giải mã đúng, nhấp nháy toàn bộ `LEDR[9:0]` nếu giải mã sai.

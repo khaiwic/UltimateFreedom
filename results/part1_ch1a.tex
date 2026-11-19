@@ -1,0 +1,760 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage[vietnamese]{babel}
+\usepackage[left=2.5cm,right=2.0cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{graphicx}
+\usepackage{booktabs,longtable,array,tabularx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+
+% -----------------------------------------------------------------------------
+% Cau hinh gian dong va dinh dang chung
+% -----------------------------------------------------------------------------
+\linespread{1.25}
+\setlength{\headheight}{15pt}
+\setlength{\parindent}{0.8cm}
+\setlength{\parskip}{3pt}
+
+% Bang mau chuyen nghiep cho bao cao ky thuat
+\definecolor{primaryblue}{RGB}{20, 62, 128}
+\definecolor{secondaryblue}{RGB}{32, 95, 168}
+\definecolor{accentblue}{RGB}{0, 112, 184}
+\definecolor{mutedgray}{RGB}{90, 100, 110}
+\definecolor{boxbg}{RGB}{242, 247, 253}
+\definecolor{boxborder}{RGB}{180, 204, 232}
+\definecolor{codebg}{RGB}{248, 250, 252}
+\definecolor{codeframe}{RGB}{205, 215, 226}
+\definecolor{codekw}{RGB}{0, 72, 155}
+\definecolor{codecmt}{RGB}{60, 125, 70}
+\definecolor{codestr}{RGB}{162, 42, 42}
+
+% Cau hinh hyperref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    citecolor=primaryblue,
+    urlcolor=accentblue,
+    pdftitle={Thiet ke He thong Ma hoa - Giai ma Reed-Solomon RS(15,11) tren FPGA DE10-Lite},
+    pdfauthor={Du an UltimateFreedom},
+    bookmarksnumbered=true
+}
+
+% Cau hinh header va footer voi fancyhdr
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\footnotesize\color{mutedgray} Dự án UltimateFreedom -- Hệ thống $\text{RS}(15,11)$ trên FPGA DE10-Lite}
+\fancyhead[R]{\footnotesize\color{mutedgray}\nouppercase{\leftmark}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[C]{\small\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+\renewcommand{\chaptermark}[1]{\markboth{\chaptername\ \thechapter.\ #1}{}}
+
+% Cau hinh tieu de chuong va muc voi titlesec
+\titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries\color{primaryblue}}
+    {\chaptertitlename\ \thechapter}{10pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{-18pt}{18pt}
+
+\titleformat{\section}
+    {\normalfont\Large\bfseries\color{primaryblue}}
+    {\thesection}{0.8em}{}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+
+\titleformat{\subsection}
+    {\normalfont\large\bfseries\color{secondaryblue}}
+    {\thesubsection}{0.8em}{}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% Cau hinh listings cho Verilog va Python (chi dung ASCII ben trong lstlisting)
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    breaklines=true,
+    breakatwhitespace=false,
+    tabsize=4,
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{mutedgray},
+    numbersep=7pt,
+    xleftmargin=12pt,
+    framexleftmargin=12pt,
+    keywordstyle=\color{codekw}\bfseries,
+    commentstyle=\color{codecmt}\itshape,
+    stringstyle=\color{codestr},
+    columns=flexible,
+    keepspaces=true
+}
+
+\lstdefinestyle{verilogstyle}{
+    language=Verilog,
+    morekeywords={localparam, genvar, generate, endgenerate, wire, reg}
+}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python
+}
+
+% Dinh dang danh sach gon gang
+\setlist[itemize]{topsep=3pt, itemsep=2pt, parsep=0pt, leftmargin=1.5em}
+\setlist[enumerate]{topsep=3pt, itemsep=2pt, parsep=0pt, leftmargin=1.5em}
+
+\begin{document}
+
+% =============================================================================
+% TRANG BIA (TITLE PAGE)
+% =============================================================================
+\begin{titlepage}
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw[line width=2.2pt, color=primaryblue]
+            ($(current page.north west)+(1.4cm,-1.4cm)$)
+            rectangle
+            ($(current page.south east)+(-1.4cm,1.4cm)$);
+        \draw[line width=0.7pt, color=secondaryblue]
+            ($(current page.north west)+(1.58cm,-1.58cm)$)
+            rectangle
+            ($(current page.south east)+(-1.58cm,1.58cm)$);
+        \fill[primaryblue]
+            ($(current page.north west)+(1.58cm,-1.58cm)$)
+            rectangle
+            ($(current page.north east)+(-1.58cm,-1.88cm)$);
+    \end{tikzpicture}
+
+    \centering
+    \vspace*{1.0cm}
+    {\large\bfseries\color{primaryblue} BÁO CÁO BÀI TẬP LỚN -- KỸ THUẬT THIẾT KẾ VI MẠCH FPGA}\\[0.25cm]
+    {\normalsize\color{mutedgray} DỰ ÁN MÃ NGUỒN MỞ \textbf{ULTIMATEFREEDOM}}\\[0.5cm]
+
+    \rule{0.75\textwidth}{0.8pt}\\[1.6cm]
+
+    {\large\bfseries\color{secondaryblue} ĐỀ TÀI}\\[0.45cm]
+    {\LARGE\bfseries\color{primaryblue}
+        NGHIÊN CỨU, THIẾT KẾ VÀ THỰC THI HỆ THỐNG\\[0.22cm]
+        MÃ HÓA -- GIẢI MÃ REED-SOLOMON $\text{RS}(15, 11)$\\[0.22cm]
+        TRÊN KIT FPGA TERASIC DE10-LITE
+    }\\[0.6cm]
+    {\normalsize\itshape\color{mutedgray}
+        Kiến trúc RTL bằng Verilog HDL trên trường hữu hạn $\text{GF}(256)$,\\
+        mô hình tham chiếu Python và kiểm chứng trên Intel MAX 10
+    }\\[1.5cm]
+
+    \begin{tcolorbox}[
+        width=0.88\textwidth,
+        colback=boxbg,
+        colframe=primaryblue,
+        boxrule=0.8pt,
+        arc=4pt,
+        left=10pt,
+        right=10pt,
+        top=8pt,
+        bottom=8pt
+    ]
+        \small
+        \renewcommand{\arraystretch}{1.25}
+        \begin{tabularx}{\linewidth}{@{}>{\bfseries\color{primaryblue}}l X@{}}
+            Chuẩn mã hóa: & $\text{RS}(15,11)$ systematic rút ngắn từ $\text{RS}(255,251)$ trên $\text{GF}(256)$ \\
+            Khả năng sửa sai: & $d_{\min} = 5$, sửa tối đa $T = 2$ symbol lỗi bất kỳ trên khối $N = 15$ byte \\
+            Đa thức trường \& sinh: & $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ (\texttt{9'h11D}), $\alpha = \text{0x02}$, $g(x) = x^4 + \text{0x0F}x^3 + \text{0x36}x^2 + \text{0x78}x + \text{0x40}$ \\
+            Phần cứng mục tiêu: & Terasic DE10-Lite -- FPGA Intel MAX 10 (\texttt{10M50DAF484C7G}), $50\text{ MHz}$ \\
+            Ngôn ngữ \& Công cụ: & Verilog HDL, Python 3, ModelSim/QuestaSim, Intel Quartus Prime \\
+            Quy mô kiểm chứng: & 10 testbench độc lập (\texttt{102,175} lượt kiểm tra, 0 lỗi) \& 5 bộ vector chuẩn
+        \end{tabularx}
+    \end{tcolorbox}
+
+    \vfill
+    \rule{0.45\textwidth}{0.5pt}\\[0.3cm]
+    {\normalsize\bfseries\color{primaryblue} DỰ ÁN ULTIMATEFREEDOM -- TÀI LIỆU KỸ THUẬT TỔNG HỢP}\\[0.15cm]
+    {\small\color{mutedgray} Tham chiếu đặc tả: \texttt{rtl/include/rs\_params.vh}, \texttt{docs/}, \texttt{model/}, \texttt{tb/}}
+    \vspace*{0.6cm}
+\end{titlepage}
+
+% =============================================================================
+% PHAN DAU (ROMAN PAGE NUMBERING)
+% =============================================================================
+\pagenumbering{roman}
+
+\chapter*{Lời nói đầu và Tổng quan Báo cáo}
+\addcontentsline{toc}{chapter}{Lời nói đầu và Tổng quan Báo cáo}
+\markboth{Lời nói đầu và Tổng quan Báo cáo}{}
+
+Mã kiểm soát lỗi Reed-Solomon (RS) là lớp mã khối tuyến tính không nhị phân tối ưu theo giới hạn Singleton, được ứng dụng rộng rãi trong truyền thông vệ tinh (CCSDS, DVB-S), lưu trữ dữ liệu mật độ cao (RAID, SSD, đĩa quang) và mã vạch hai chiều nhờ khả năng sửa lỗi cụm vượt trội ở cấp độ symbol. Dự án \textbf{UltimateFreedom} đặt mục tiêu thiết kế, mô hình hóa, kiểm chứng và thực thi trọn vẹn hệ thống mã hóa -- giải mã Reed-Solomon $\text{RS}(15, 11)$ trên trường hữu hạn $\text{GF}(256)$ bằng ngôn ngữ mô tả phần cứng Verilog HDL trên kit phát triển \textbf{Terasic DE10-Lite} sử dụng FPGA Intel MAX 10 (\texttt{10M50DAF484C7G}).
+
+Về phạm vi kỹ thuật, hệ thống xử lý các khối dữ liệu gồm $K = 11$ symbol dữ liệu ($88\text{ bit}$) và sinh $R = 4$ symbol kiểm tra parity ($32\text{ bit}$) để tạo thành từ mã systematic dài $N = 15$ symbol ($120\text{ bit}$), đảm bảo khoảng cách tối thiểu $d_{\min} = 5$ và khả năng sửa tối đa $T = 2$ symbol lỗi không biết trước vị trí. Thiết kế tuân thủ chặt chẽ giao thức bắt tay luồng \texttt{valid}/\texttt{ready} có hỗ trợ đệm ngược (\textit{backpressure}), tích hợp đường dẫn nhanh (\textit{fast-path}) khi toàn bộ syndrome bằng 0, cơ chế kiểm tra lại syndrome sau sửa lỗi (\textit{re-verify}) nhằm ngăn ngừa giải mã sai khi vượt ngưỡng $T$, cùng khối giao tiếp ngoại vi trực quan trên DE10-Lite gồm các switch \texttt{SW[9:0]}, nút nhấn \texttt{KEY[1:0]} (kèm mạch đồng bộ reset và lọc dội $10\text{ ms}$), bộ tiêm lỗi \texttt{error\_injector}, hai LED 7 đoạn \texttt{HEX1:HEX0} và các LED trạng thái \texttt{LEDR[2:0]} ở xung nhịp $50\text{ MHz}$.
+
+Báo cáo được tổ chức thành ba chương với nội dung liên kết chặt chẽ từ lý thuyết đại số đến phần cứng thực tế:
+\begin{itemize}
+    \item \textbf{Chương 1 -- Tổng quan về thuật toán Reed-Solomon, mã hóa và giải mã:} Trình bày bản chất mã khối không nhị phân và tính chất khoảng cách tối đa MDS; xây dựng nền tảng đại số trường $\text{GF}(256)$ với đa thức bất khả quy \texttt{9'h11D} và các phép toán tổ hợp/tra bảng; đặc tả đầy đủ 14 tham số trong \texttt{rs\_params.vh}, phép rút ngắn mã từ $\text{RS}(255,251)$, quy trình mã hóa LFSR systematic, chuỗi giải mã 6 bước (Syndrome, Berlekamp--Massey, Error Evaluator $\Omega(z)$, Chien Search, Forney, Error Corrector kèm Re-verify) và mô hình tham chiếu Python (\texttt{model/}).
+    \item \textbf{Chương 2 -- Thiết kế kiến trúc phần cứng RTL và tích hợp DE10-Lite:} Phân tích chi tiết các module số học $\text{GF}(256)$, bộ mã hóa \texttt{rs\_encoder}, máy trạng thái điều phối và kiến trúc từng khối con của \texttt{rs\_decoder}, bộ đệm hai cổng \texttt{data\_buffer}, bộ điều phối trung tâm \texttt{rs\_controller}, các khối demo kiểm chứng và hệ thống ngoại vi cấp đỉnh \texttt{top\_de10\_lite}.
+    \item \textbf{Chương 3 -- Kiểm chứng mô phỏng, tổng hợp Quartus và thực nghiệm phần cứng:} Trình bày kịch bản kiểm thử qua 10 testbench Verilog đạt $102{,}175$ lượt kiểm tra với $0$ lỗi trên ModelSim/QuestaSim, phân tích dạng sóng, báo cáo tài nguyên và phân tích thời gian (\texttt{timing.sdc}) trên Intel Quartus Prime, cùng quy trình thử nghiệm thực tế trên kit DE10-Lite.
+\end{itemize}
+
+\tableofcontents
+\listoftables
+\listoffigures
+
+% =============================================================================
+% CHUONG 1 (ARABIC PAGE NUMBERING)
+% =============================================================================
+\clearpage
+\pagenumbering{arabic}
+
+\chapter{Tổng quan về Thuật toán Reed-Solomon, Mã hóa và Giải mã}
+
+Chương này thiết lập cơ sở lý thuyết đại số và đặc tả thuật toán thống nhất giữa mô hình phần mềm Python (\texttt{model/}) và kiến trúc phần cứng RTL (\texttt{rtl/}) cho bộ mã hóa -- giải mã Reed-Solomon $\text{RS}(15,11)$ trong dự án UltimateFreedom. Mọi tham số, thứ tự hệ số đa thức và ví dụ đối chiếu đều tuân thủ nghiêm ngặt tệp cấu hình trung tâm \texttt{rtl/include/rs\_params.vh} và các tài liệu đặc tả \texttt{docs/gf256.md}, \texttt{docs/rs\_parameters.md}, \texttt{docs/rs\_algorithm.md}.
+
+% -----------------------------------------------------------------------------
+\section{Tổng quan về mã kiểm soát lỗi Reed-Solomon}
+% -----------------------------------------------------------------------------
+
+Mã Reed-Solomon (RS), do Irving S. Reed và Gustave Solomon đề xuất năm 1960, thuộc họ mã khối tuyến tính tuần hoàn không nhị phân (\textit{non-binary cyclic linear block codes}) xây dựng trên trường hữu hạn $\text{GF}(q)$, trong đó phổ biến nhất là trường nhị phân mở rộng $\text{GF}(2^m)$ với mỗi phần tử (symbol) có độ rộng $m$ bit. Khác với các mã nhị phân như Hamming hay BCH nhị phân vốn thao tác trực tiếp trên từng bit đơn lẻ thuộc $\text{GF}(2)$, bộ mã hóa $\text{RS}(n, k)$ gom $k$ symbol dữ liệu nguồn (tổng cộng $km$ bit) và bổ sung $r = n - k$ symbol kiểm tra dư thừa (\textit{parity}) để tạo thành từ mã độ dài $n$ symbol ($nm$ bit), với tỷ lệ mã $R_c = k/n$.
+
+Đặc trưng toán học quan trọng nhất của mã Reed-Solomon là tính chất đạt dấu bằng trong \textbf{giới hạn Singleton} (\textit{Singleton bound}). Đối với mọi mã khối tuyến tính $(n, k)$ trên trường bất kỳ, khoảng cách Hamming tối thiểu $d_{\min}$ giữa hai từ mã phân biệt luôn bị chặn trên bởi:
+\begin{equation}
+    d_{\min} \le n - k + 1.
+    \label{eq:singleton-bound}
+\end{equation}
+Mã RS đạt chính xác cận trên này:
+\begin{equation}
+    d_{\min} = n - k + 1 = r + 1,
+    \label{eq:mds-dmin}
+\end{equation}
+do đó được xếp vào lớp mã phân tách khoảng cách tối đa (\textit{Maximum Distance Separable -- MDS}). Một mã MDS có khả năng \textbf{phát hiện} tối đa $d_{\min} - 1 = r$ lỗi symbol và \textbf{sửa chữa} đảm bảo mọi tổ hợp lỗi không biết trước vị trí có số lượng symbol sai không vượt quá:
+\begin{equation}
+    t = \left\lfloor \frac{d_{\min} - 1}{2} \right\rfloor = \left\lfloor \frac{n - k}{2} \right\rfloor = \left\lfloor \frac{r}{2} \right\rfloor.
+    \label{eq:rs-t-cap}
+\end{equation}
+Với cấu hình $\text{RS}(15,11)$ trên trường $\text{GF}(256)$ ($m = 8$) của dự án: mỗi khối mang $K = 11$ byte dữ liệu ($88\text{ bit}$) và $R = 4$ byte parity ($32\text{ bit}$), tạo thành từ mã $N = 15$ byte ($120\text{ bit}$) với tỷ lệ mã $R_c = 11/15 \approx 73{,}33\%$, khoảng cách tối thiểu $d_{\min} = 5$, và khả năng sửa đảm bảo $T = 2$ symbol lỗi bất kỳ nằm tại dữ liệu hoặc parity. Bộ giải mã trong cấu hình hiện tại xử lý lỗi symbol chưa biết vị trí (chưa tích hợp chế độ xóa \textit{erasure}).
+
+\textbf{Phân biệt lỗi symbol với lỗi bit và cơ chế sửa lỗi cụm (burst error):} Trong mã RS trên $\text{GF}(2^8)$, đơn vị đánh giá sai hỏng của kênh truyền là \textit{symbol} (1 byte = 8 bit), không phải bit đơn lẻ. Dù một byte bị lật 1 bit hay toàn bộ 8 bit, bộ giải mã vẫn chỉ ghi nhận đúng \textbf{1 lỗi symbol}. Hệ quả là mã RS có năng lực chống \textit{lỗi cụm} vượt trội:
+\begin{itemize}
+    \item Một cụm nhiễu liên tiếp dài đến $8$ bit nếu rơi gọn vào ranh giới 1 byte chỉ tiêu tốn $1$ trong tổng số $T = 2$ lỗi cho phép; thậm chí $2$ byte riêng rẽ bị hỏng toàn bộ ($16\text{ bit}$ sai) vẫn được khôi phục nguyên vẹn.
+    \item Trong trường hợp xấu nhất khi cụm lỗi bắc cầu qua ranh giới giữa các byte, mọi chuỗi lỗi cụm liên tiếp có độ dài không quá $(T - 1)m + 1 = 9\text{ bit}$ đều ảnh hưởng tối đa $T = 2$ symbol liền kề, nên chắc chắn được $\text{RS}(15,11)$ sửa đúng bất kể pha căn chỉnh byte.
+\end{itemize}
+
+\begin{table}[!htb]
+    \centering
+    \caption{So sánh góc nhìn lỗi bit và lỗi symbol đối với cấu hình $\text{RS}(15,11)$ trên $\text{GF}(256)$}
+    \label{tab:bit-vs-symbol}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.8cm} >{\centering\arraybackslash}p{3.0cm} >{\centering\arraybackslash}p{2.6cm} X@{}}
+        \toprule
+        \textbf{Kịch bản nhiễu trên kênh} & \textbf{Số bit sai} & \textbf{Số symbol sai} & \textbf{Khả năng xử lý của $\text{RS}(15,11)$} \\
+        \midrule
+        1 bit lỗi đơn tại 1 byte & $1$ bit & $1$ symbol & Sửa đúng $100\%$ ($1 \le T$) \\
+        1 byte hỏng toàn bộ 8 bit & $8$ bit & $1$ symbol & Sửa đúng $100\%$ ($1 \le T$) \\
+        Lỗi cụm dài $9\text{ bit}$ bất kỳ & $\le 9$ bit & $\le 2$ symbol & Sửa đúng $100\%$ (tối đa $2$ byte kề nhau) \\
+        2 byte bất kỳ đều hỏng hết & $16$ bit & $2$ symbol & Sửa đúng $100\%$ ($2 \le T$) \\
+        3 byte mỗi byte sai $1\text{ bit}$ & $3$ bit & $3$ symbol & Vượt ngưỡng ($3 > T$), cần phát hiện \texttt{fail} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+% -----------------------------------------------------------------------------
+\section{Cơ sở toán học trường hữu hạn \texorpdfstring{$\text{GF}(256)$}{GF(256)}}
+% -----------------------------------------------------------------------------
+
+\subsection{Xây dựng trường \texorpdfstring{$\text{GF}(2^8)$}{GF(2^8)}, đa thức bất khả quy và phần tử nguyên thủy}
+
+Trường Galois $\text{GF}(256) = \text{GF}(2^8)$ là mở rộng bậc $m = 8$ của trường nhị phân cơ sở $\text{GF}(2) = \{0, 1\}$, gồm đúng $256$ phần tử tương ứng một-một với tập các byte $a[7:0]$ từ \texttt{0x00} đến \texttt{0xFF}. Theo quy ước của \texttt{docs/gf256.md} và \texttt{rtl/include/rs\_params.vh}, mỗi byte sử dụng biểu diễn theo \textbf{cơ sở đa thức} (\textit{polynomial basis}), trong đó bit $a[i]$ ($i = 0 \dots 7$) là hệ số của $u^i$:
+\begin{equation}
+    a(u) = a_7 u^7 + a_6 u^6 + a_5 u^5 + a_4 u^4 + a_3 u^3 + a_2 u^2 + a_1 u + a_0, \quad a_i \in \text{GF}(2).
+    \label{eq:gf-poly-basis}
+\end{equation}
+Cần phân biệt rạch ròi vai trò của ba biến ký hiệu trong toàn bộ hệ thống: biến $u$ biểu diễn cấu trúc bit bên trong một symbol $\text{GF}(256)$; biến $x$ biểu diễn vị trí symbol trong đa thức dữ liệu, từ mã và đa thức sinh $g(x)$; còn biến $z$ dùng cho đa thức syndrome $S(z)$, đa thức định vị lỗi $\Lambda(z)$ và đa thức đánh giá lỗi $\Omega(z)$.
+
+Để phép nhân hai đa thức bậc $\le 7$ khép kín trong tập $256$ phần tử, phép nhân được thực hiện theo modulo một \textbf{đa thức bất khả quy nguyên thủy} (\textit{primitive irreducible polynomial}) bậc 8 trên $\text{GF}(2)$. Dự án chọn đa thức mặc định (macro \texttt{GF\_PRIM\_POLY = 9'h11D}):
+\begin{equation}
+    p(u) = u^8 + u^4 + u^3 + u^2 + 1 \;\longleftrightarrow\; \texttt{9'b1\_0001\_1101} = \texttt{9'h11D} = 285_{10},
+    \label{eq:prim-poly}
+\end{equation}
+cùng phần tử nguyên thủy (\textit{primitive element}) \texttt{GF\_ALPHA = 8'h02}:
+\begin{equation}
+    \alpha = u \;\longleftrightarrow\; \texttt{8'b0000\_0010} = \texttt{0x02}.
+    \label{eq:alpha}
+\end{equation}
+
+\textbf{Vai trò của bit bậc 8 và hằng số rút gọn \texttt{0x1D}:} Trong trường đặc số $2$, phép cộng và phép trừ trùng nhau ($+1 \equiv -1 \pmod 2$), nên đẳng thức đồng dư $p(u) \equiv 0 \pmod{p(u)}$ trực tiếp dẫn đến quan hệ rút gọn:
+\begin{equation}
+    u^8 \equiv u^4 + u^3 + u^2 + 1 \pmod{p(u)}.
+    \label{eq:u8-reduce}
+\end{equation}
+Khi nhân một byte với $u$ (tức dịch trái 1 bit), nếu bit trọng số cao nhất $a[7] = 1$ trước khi dịch, số hạng $a[7] u^7$ sẽ trở thành $u^8$ nằm ở vị trí bit thứ 8 (tràn khỏi thanh ghi 8 bit). Việc bỏ bit bậc 8 bằng mặt nạ 8 bit (\texttt{\& 0xFF}) tương đương với trừ đi $u^8$, và để bảo toàn giá trị đồng dư theo \eqref{eq:u8-reduce}, ta phải XOR thêm phần đa thức thấp 8 bit là $u^4 + u^3 + u^2 + 1$, có mã thập lục phân \texttt{0x1D} (\texttt{8'b0001\_1101}). Vì lý do đó, hằng \texttt{GF\_PRIM\_POLY} phải khai báo đủ $9\text{ bit}$ (\texttt{9'h11D}) để phản ánh đúng bậc 8 của $p(u)$, trong khi hằng rút gọn khi dịch byte là \texttt{POLY\_LOW = PRIM\_POLY[7:0] = 8'h1D}. Tuyệt đối không dùng \texttt{0x11D} hay \texttt{0x1D} với toán tử chia lấy dư số nguyên \texttt{\%} vì phép chia cần thực hiện là phép chia đa thức trên $\text{GF}(2)$.
+
+Với đa thức nguyên thủy \texttt{9'h11D} và $\alpha = \text{0x02}$, nhóm nhân $\text{GF}(256)^* = \text{GF}(256) \setminus \{0\}$ là nhóm cyclic cấp \texttt{GF\_ORDER} $= 255$: các lũy thừa $\alpha^0, \alpha^1, \dots, \alpha^{254}$ đi qua đủ toàn bộ $255$ byte khác $0$ không trùng lặp trước khi khép chu trình tại $\alpha^{255} = \alpha^0 = \text{0x01}$. Phần tử $0$ (\texttt{0x00}) không nằm trong chu trình lũy thừa của $\alpha$.
+
+\subsection{Biểu diễn phần tử theo cơ sở đa thức và dạng lũy thừa}
+
+Mỗi phần tử khác $0$ của $\text{GF}(256)$ có hai biểu diễn tương đương phục vụ linh hoạt cho tính toán: (i) \textbf{dạng đa thức/vector byte} thuận tiện cho phép cộng (XOR bit) và truyền thông tuần tự; (ii) \textbf{dạng lũy thừa} $\alpha^i$ ($0 \le i \le 254$) thuận tiện cho phép nhân, chia và tính nghịch đảo thông qua số học modulo $255$ trên số mũ. Bảng~\ref{tab:gf-poly-map} trình bày ánh xạ giữa mã byte, nhị phân và đa thức cho một số phần tử tiêu biểu trong đặc tả dự án, còn Bảng~\ref{tab:gf-alpha-powers} liệt kê bảng tra đối chiếu $\alpha^0 \dots \alpha^{15}$ cùng các lũy thừa đặc trưng đến $\alpha^{254}$.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Ánh xạ giữa biểu diễn byte, nhị phân và đa thức trên $\text{GF}(256)$}
+    \label{tab:gf-poly-map}
+    \begin{tabular}{@{}cccc@{}}
+        \toprule
+        \textbf{Hex} & \textbf{Nhị phân (\texttt{a[7:0]})} & \textbf{Đa thức đại diện $a(u)$} & \textbf{Vai trò / Ghi chú} \\
+        \midrule
+        \texttt{0x00} & \texttt{0000\_0000} & $0$ & Phần tử không cộng tính \\
+        \texttt{0x01} & \texttt{0000\_0001} & $1$ & Đơn vị nhân ($\alpha^0 = \alpha^{255}$) \\
+        \texttt{0x02} & \texttt{0000\_0010} & $u$ & Phần tử nguyên thủy $\alpha = \alpha^1$ \\
+        \texttt{0x1D} & \texttt{0001\_1101} & $u^4 + u^3 + u^2 + 1$ & Phần thấp rút gọn ($\alpha^8 = u^8 \bmod p(u)$) \\
+        \texttt{0x80} & \texttt{1000\_0000} & $u^7$ & Phần tử tràn MSB khi nhân $\alpha$ ($\alpha^7$) \\
+        \texttt{0x8E} & \texttt{1000\_1110} & $u^7 + u^3 + u^2 + u$ & Nghịch đảo của $\alpha$: $\alpha^{-1} = \alpha^{254}$ \\
+        \texttt{0xA7} & \texttt{1010\_0111} & $u^7 + u^5 + u^2 + u + 1$ & Ví dụ minh họa chuẩn trong \texttt{docs/gf256.md} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[!htb]
+    \centering
+    \caption{Các lũy thừa $\alpha^i$ trong $\text{GF}(256)$ với $p(u) = \texttt{0x11D}$, $\alpha = \texttt{0x02}$}
+    \label{tab:gf-alpha-powers}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{@{}ccc|ccc|ccc@{}}
+        \toprule
+        \textbf{Số mũ $i$} & \textbf{$\alpha^i$ (Hex)} & \textbf{Nhị phân} & \textbf{Số mũ $i$} & \textbf{$\alpha^i$ (Hex)} & \textbf{Nhị phân} & \textbf{Số mũ $i$} & \textbf{$\alpha^i$ (Hex)} & \textbf{Nhị phân} \\
+        \midrule
+        $0$  & \texttt{0x01} & \texttt{0000\_0001} & $10$ & \texttt{0x74} & \texttt{0111\_0100} & $150$ & \texttt{0x55} & \texttt{0101\_0101} \\
+        $1$  & \texttt{0x02} & \texttt{0000\_0010} & $11$ & \texttt{0xE8} & \texttt{1110\_1000} & $200$ & \texttt{0x1C} & \texttt{0001\_1100} \\
+        $2$  & \texttt{0x04} & \texttt{0000\_0100} & $12$ & \texttt{0xCD} & \texttt{1100\_1101} & $240$ & \texttt{0x2C} & \texttt{0010\_1100} \\
+        $3$  & \texttt{0x08} & \texttt{0000\_1000} & $13$ & \texttt{0x87} & \texttt{1000\_0111} & $241$ & \texttt{0x58} & \texttt{0101\_1000} \\
+        $4$  & \texttt{0x10} & \texttt{0001\_0000} & $14$ & \texttt{0x13} & \texttt{0001\_0011} & $250$ & \texttt{0x6C} & \texttt{0110\_1100} \\
+        $5$  & \texttt{0x20} & \texttt{0010\_0000} & $15$ & \texttt{0x26} & \texttt{0010\_0110} & $251$ & \texttt{0xD8} & \texttt{1101\_1000} \\
+        $6$  & \texttt{0x40} & \texttt{0100\_0000} & $25$ & \texttt{0x03} & \texttt{0000\_0011} & $252$ & \texttt{0xAD} & \texttt{1010\_1101} \\
+        $7$  & \texttt{0x80} & \texttt{1000\_0000} & $50$ & \texttt{0x05} & \texttt{0000\_0101} & $253$ & \texttt{0x47} & \texttt{0100\_0111} \\
+        $8$  & \texttt{0x1D} & \texttt{0001\_1101} & $100$ & \texttt{0x11} & \texttt{0001\_0001} & $254$ & \texttt{0x8E} & \texttt{1000\_1110} \\
+        $9$  & \texttt{0x3A} & \texttt{0011\_1010} & -- & -- & -- & $255$ & \texttt{0x01} & \texttt{0000\_0001} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Trong Bảng~\ref{tab:gf-alpha-powers}, các mốc $\alpha^{14} = \texttt{0x13}$ và $\alpha^{241} = \texttt{0x58}$ lần lượt là giá trị vị trí lỗi $X_0$ và nghịch đảo $z_0 = X_0^{-1}$ tại chỉ số truyền đầu tiên $i = 0$ của từ mã $\text{RS}(15,11)$ (sẽ được đối chiếu ở Mục~\ref{sec:shorten}).
+
+\subsection{Chi tiết toán học và thuật toán các phép toán trên \texorpdfstring{$\text{GF}(256)$}{GF(256)}}
+
+\subsubsection{Phép cộng và phép trừ}
+Vì các hệ số của $a(u)$ và $b(u)$ thuộc $\text{GF}(2)$, phép cộng và phép trừ đa thức thực hiện cộng từng hệ số cùng bậc theo modulo $2$ không nhớ, tương đương tuyệt đối với phép \textbf{XOR từng bit}:
+\begin{equation}
+    a + b = a - b = a \oplus b, \qquad (a \oplus b)[i] = a[i] \oplus b[i] \quad (i = 0 \dots 7).
+    \label{eq:gf-add-sub}
+\end{equation}
+Mỗi phần tử đồng thời là phần tử đối của chính nó: $a \oplus a = \texttt{0x00}$. Trong Verilog HDL (\texttt{rtl/gf\_arithmetic/gf256\_add.v}), phép toán chỉ gồm 8 cổng XOR tổ hợp song song (\texttt{assign y = a \^{} b;}) với độ trễ $0$ chu kỳ xung nhịp. Ví dụ đối chiếu từ \texttt{docs/gf256.md}:
+\begin{align*}
+    \texttt{0x57} + \texttt{0x83} &= \texttt{0101\_0111}_2 \oplus \texttt{1000\_0011}_2 = \texttt{1101\_0100}_2 = \texttt{0xD4}, \\
+    \texttt{0x57} - \texttt{0x83} &= \texttt{0x57} \oplus \texttt{0x83} = \texttt{0xD4}, \qquad \texttt{0xA7} + \texttt{0xA7} = \texttt{0x00}.
+\end{align*}
+Lưu ý: không bao giờ dùng phép cộng/trừ số nguyên thông thường (\texttt{+}, \texttt{-}) cho giá trị symbol $\text{GF}(256)$; phép cộng/trừ số nguyên chỉ được dùng khi thao tác trên chỉ số mảng hoặc số mũ của $\alpha$ modulo $255$.
+
+\subsubsection{Phép nhân (\texttt{xtime} và thuật toán dịch--XOR 8 bước)}
+Phép nhân hai phần tử $a(u), b(u) \in \text{GF}(256)$ định nghĩa bằng tích đa thức nhị phân (bậc tối đa $14$, tối đa $15\text{ bit}$) lấy phần dư khi chia cho đa thức trường $p(u)$:
+\begin{equation}
+    c(u) = \bigl(a(u) \cdot b(u)\bigr) \bmod p(u).
+    \label{eq:gf-mul-def}
+\end{equation}
+Khai triển $b(u) = \sum_{k=0}^{7} b_k u^k$ với $u \equiv \alpha \pmod{p(u)}$ đưa phép nhân về tổng tuyến tính có điều kiện của các lần dịch nhân $\alpha$:
+\begin{equation}
+    a(u) \cdot b(u) \bmod p(u) = \bigoplus_{k=0}^{7} b_k \cdot \bigl(a(u) \cdot \alpha^k \bmod p(u)\bigr).
+    \label{eq:gf-mul-shift}
+\end{equation}
+Trong đó, phép nhân một byte bất kỳ với $\alpha = \texttt{0x02}$ được định nghĩa là hàm cơ sở $\text{xtime}(a)$:
+\begin{equation}
+    \text{xtime}(a) = (a \cdot u) \bmod p(u) =
+    \begin{cases}
+        (a \ll 1) \ \& \ \texttt{0xFF}, & \text{nếu } a[7] = 0, \\
+        \bigl((a \ll 1) \ \& \ \texttt{0xFF}\bigr) \oplus \texttt{0x1D}, & \text{nếu } a[7] = 1.
+    \end{cases}
+    \label{eq:xtime}
+\end{equation}
+Bit $a[7]$ bắt buộc phải được kiểm tra \textit{trước} khi dịch trái. Ví dụ, $\text{xtime}(\texttt{0x80}) = (\texttt{0x80} \ll 1)_{\text{8-bit}} \oplus \texttt{0x1D} = \texttt{0x00} \oplus \texttt{0x1D} = \texttt{0x1D}$, và $\text{xtime}(\texttt{0xFF}) = \texttt{0xFE} \oplus \texttt{0x1D} = \texttt{0xE3}$.
+
+Thuật toán nhân dịch--XOR gồm $8$ bước lặp $k = 0 \dots 7$ (khởi tạo biến tích lũy $\text{prod} = \texttt{0x00}$):
+\begin{enumerate}
+    \item Kiểm tra bit thấp nhất $b[0]$: nếu $b[0] = 1$, cập nhật $\text{prod} \leftarrow \text{prod} \oplus a$.
+    \item Cập nhật $a \leftarrow \text{xtime}(a)$ theo \eqref{eq:xtime} và dịch phải $b \leftarrow b \gg 1$.
+\end{enumerate}
+
+Bảng~\ref{tab:mul-trace-57-83} và Bảng~\ref{tab:mul-trace-02-8E} minh họa từng bước tính tay cho hai phép nhân chuẩn $\texttt{0x57} \times \texttt{0x83} = \texttt{0x31}$ và $\texttt{0x02} \times \texttt{0x8E} = \texttt{0x01}$. Một số cặp kiểm chứng bổ sung từ \texttt{docs/gf256.md}: $\texttt{0x00} \times \texttt{0x57} = \texttt{0x00}$, $\texttt{0x01} \times \texttt{0x57} = \texttt{0x57}$, $\texttt{0x80} \times \texttt{0x02} = \texttt{0x1D}$, $\texttt{0xFF} \times \texttt{0x02} = \texttt{0xE3}$.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Tính tay 8 bước thuật toán dịch--XOR cho phép nhân $\texttt{0x57} \times \texttt{0x83} = \texttt{0x31}$}
+    \label{tab:mul-trace-57-83}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{@{}ccccccc@{}}
+        \toprule
+        \textbf{Bước $k$} & \textbf{$b[0]$} & \textbf{$a$ (Hex / Nhị phân)} & \textbf{$\text{prod}$ trước} & \textbf{$\text{prod}$ sau XOR} & \textbf{Tràn $a[7]$} & \textbf{$a_{\text{next}} = \text{xtime}(a)$} \\
+        \midrule
+        $0$ & $1$ & \texttt{0x57} (\texttt{0101\_0111}) & \texttt{0x00} & \texttt{0x57} & $0$ & \texttt{0xAE} \\
+        $1$ & $1$ & \texttt{0xAE} (\texttt{1010\_1110}) & \texttt{0x57} & \texttt{0xF9} & $1$ & $\texttt{0x5C}\oplus\texttt{0x1D}=\texttt{0x41}$ \\
+        $2$ & $0$ & \texttt{0x41} (\texttt{0100\_0001}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0x82} \\
+        $3$ & $0$ & \texttt{0x82} (\texttt{1000\_0010}) & \texttt{0xF9} & \texttt{0xF9} & $1$ & $\texttt{0x04}\oplus\texttt{0x1D}=\texttt{0x19}$ \\
+        $4$ & $0$ & \texttt{0x19} (\texttt{0001\_1001}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0x32} \\
+        $5$ & $0$ & \texttt{0x32} (\texttt{0011\_0010}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0x64} \\
+        $6$ & $0$ & \texttt{0x64} (\texttt{0110\_0100}) & \texttt{0xF9} & \texttt{0xF9} & $0$ & \texttt{0xC8} \\
+        $7$ & $1$ & \texttt{0xC8} (\texttt{1100\_1000}) & \texttt{0xF9} & \texttt{0x31} & $1$ & $\texttt{0x90}\oplus\texttt{0x1D}=\texttt{0x8D}$ \\
+        \midrule
+        \multicolumn{7}{r}{\textbf{Kết quả cuối cùng:} $\texttt{0x57} \times \texttt{0x83} = \texttt{0xF9} \oplus \texttt{0xC8} = \texttt{0x31}$} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[!htb]
+    \centering
+    \caption{Tính tay 8 bước thuật toán dịch--XOR cho phép nhân $\texttt{0x02} \times \texttt{0x8E} = \texttt{0x01}$}
+    \label{tab:mul-trace-02-8E}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{@{}ccccccc@{}}
+        \toprule
+        \textbf{Bước $k$} & \textbf{$b[0]$} & \textbf{$a$ (Hex / Nhị phân)} & \textbf{$\text{prod}$ trước} & \textbf{$\text{prod}$ sau XOR} & \textbf{Tràn $a[7]$} & \textbf{$a_{\text{next}} = \text{xtime}(a)$} \\
+        \midrule
+        $0$ & $0$ & \texttt{0x02} (\texttt{0000\_0010}) & \texttt{0x00} & \texttt{0x00} & $0$ & \texttt{0x04} \\
+        $1$ & $1$ & \texttt{0x04} (\texttt{0000\_0100}) & \texttt{0x00} & \texttt{0x04} & $0$ & \texttt{0x08} \\
+        $2$ & $1$ & \texttt{0x08} (\texttt{0000\_1000}) & \texttt{0x04} & \texttt{0x0C} & $0$ & \texttt{0x10} \\
+        $3$ & $1$ & \texttt{0x10} (\texttt{0001\_0000}) & \texttt{0x0C} & \texttt{0x1C} & $0$ & \texttt{0x20} \\
+        $4$ & $0$ & \texttt{0x20} (\texttt{0010\_0000}) & \texttt{0x1C} & \texttt{0x1C} & $0$ & \texttt{0x40} \\
+        $5$ & $0$ & \texttt{0x40} (\texttt{0100\_0000}) & \texttt{0x1C} & \texttt{0x1C} & $0$ & \texttt{0x80} \\
+        $6$ & $0$ & \texttt{0x80} (\texttt{1000\_0000}) & \texttt{0x1C} & \texttt{0x1C} & $1$ & $\texttt{0x00}\oplus\texttt{0x1D}=\texttt{0x1D}$ \\
+        $7$ & $1$ & \texttt{0x1D} (\texttt{0001\_1101}) & \texttt{0x1C} & \texttt{0x01} & $0$ & \texttt{0x3A} \\
+        \midrule
+        \multicolumn{7}{r}{\textbf{Kết quả cuối cùng:} $\texttt{0x02} \times \texttt{0x8E} = \texttt{0x1C} \oplus \texttt{0x1D} = \texttt{0x01}$ ($\text{hay } \texttt{0x8E} = \alpha^{-1}$)} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Lưu ý tính giao hoán: nếu đặt $a = \texttt{0x8E}$ và $b = \texttt{0x02}$, ngay ở bước $k=0$ ta có $a[7] = 1$, nên $\text{xtime}(\texttt{0x8E}) = (\texttt{0x8E} \ll 1)_{\text{8-bit}} \oplus \texttt{0x1D} = \texttt{0x1C} \oplus \texttt{0x1D} = \texttt{0x01}$; đến bước $k=1$ thì $b[0]=1$ nên $\text{prod} = \texttt{0x01}$. Thuật toán này được hiện thực trực tiếp bằng logic tổ hợp 8 bước trong \texttt{rtl/gf\_arithmetic/gf256\_mul.v} (Listing~\ref{lst:gf256-mul}) và kiểm chứng toàn bộ $256 \times 256 = 65{,}536$ cặp đầu vào trong \texttt{model/gf256\_model.py}.
+
+\begin{lstlisting}[style=verilogstyle, caption={Triển khai mạch nhân tổ hợp 8 bước trong \texttt{rtl/gf\_arithmetic/gf256\_mul.v}}, label={lst:gf256-mul}]
+localparam [8:0] PRIM_POLY = `GF_PRIM_POLY;
+localparam [7:0] POLY_LOW  = PRIM_POLY[7:0]; // 8'h1D
+always @(*) begin
+    aa  = a;
+    acc = 8'h00;
+    for (i = 0; i < 8; i = i + 1) begin
+        if (b[i])
+            acc = acc ^ aa;
+        aa = aa[7] ? ((aa << 1) ^ POLY_LOW) : (aa << 1);
+    end
+    y = acc;
+end
+\end{lstlisting}
+
+\subsubsection{Lũy thừa, Nghịch đảo nhân và Phép chia}
+Vì nhóm nhân $\text{GF}(256)^*$ có cấp $255$, mọi phần tử khác không $a \in \text{GF}(256) \setminus \{0\}$ đều thỏa mãn $a^{255} = 1$. Từ đó suy ra nghịch đảo nhân duy nhất $a^{-1}$ (sao cho $a \cdot a^{-1} = \texttt{0x01}$) chính là:
+\begin{equation}
+    a^{-1} = a^{254}, \qquad \forall a \in \{1, \dots, 255\}.
+    \label{eq:gf-inv}
+\end{equation}
+Trong mô hình tham chiếu, lũy thừa $a^e$ có thể tính trực tiếp bằng phương pháp bình phương và nhân (\textit{square-and-multiply}) mà không cần bảng tra (chẳng hạn $a^{254}$ ứng với $254 = \texttt{1111\_1110}_2$, đòi hỏi 7 phép bình phương và 6 phép nhân), hoặc thông qua cặp bảng tra lũy thừa $\text{exp}[i] = \alpha^i$ ($0 \le i \le 254$) và logarit rời rạc $\text{log}[\alpha^i] = i$:
+\begin{align}
+    a \cdot b &= \text{exp}\bigl[(\text{log}[a] + \text{log}[b]) \bmod 255\bigr], \qquad (a \ne 0,\; b \ne 0), \\
+    a^{-1}    &= \text{exp}\bigl[(255 - \text{log}[a]) \bmod 255\bigr], \qquad (a \ne 0), \\
+    a / b     &= a \cdot b^{-1} = \text{exp}\bigl[(\text{log}[a] - \text{log}[b]) \bmod 255\bigr], \qquad (a \ne 0,\; b \ne 0).
+\end{align}
+Lưu ý triển khai: (1) tổng $\text{log}[a] + \text{log}[b]$ có thể đạt $254 + 254 = 508$ nên thanh ghi cộng số mũ cần tối thiểu $9\text{ bit}$, không phải XOR; (2) phần tử $0$ không có logarit và \textbf{không có nghịch đảo nhân} (\texttt{gf\_inv(0)} và chia cho $0$ ném ngoại lệ \texttt{ZeroDivisionError} trong \texttt{model/gf256\_model.py}, còn trong phần cứng khối điều khiển/Forney phải kiểm tra mẫu số khác $0$ trước khi chia); (3) phép chia phải kiểm tra mẫu $b = 0$ trước khi trả $0$ cho trường hợp tử $a = 0$. Ví dụ kiểm chứng: $\text{inv}(\texttt{0x02}) = \alpha^{255-1} = \alpha^{254} = \texttt{0x8E}$, $\texttt{0x57}/\texttt{0x57} = \texttt{0x01}$, $\texttt{0x00}/\texttt{0x57} = \texttt{0x00}$.
+
+% -----------------------------------------------------------------------------
+\section{Đặc tả tham số và Thuật toán Mã hóa \texorpdfstring{$\text{RS}(15, 11)$}{RS(15, 11)}}
+% -----------------------------------------------------------------------------
+
+\subsection{Bảng tham số chuẩn và các phương trình liên hệ}
+
+Toàn bộ các khối RTL, testbench Verilog và mô hình Python đều đồng bộ theo 14 hằng số định nghĩa trong \texttt{rtl/include/rs\_params.vh}, được tổng hợp đầy đủ tại Bảng~\ref{tab:rs-14-params}. Nhấn mạnh rằng bộ mã $\text{RS}(15,11)$ của dự án làm việc trên trường $\text{GF}(256)$ ($8\text{ bit}$ mỗi symbol), không thu nhỏ trường về $\text{GF}(16)$.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Danh mục 14 tham số chuẩn trong \texttt{rtl/include/rs\_params.vh}}
+    \label{tab:rs-14-params}
+    \small
+    \begin{tabularx}{\textwidth}{@{}>{\ttfamily}l c X@{}}
+        \toprule
+        \multicolumn{1}{@{}l}{\textbf{Macro trong header}} & \textbf{Giá trị} & \textbf{Ý nghĩa kỹ thuật} \\
+        \midrule
+        RS\_M          & \texttt{8}       & Số bit trên mỗi symbol ($1\text{ byte}$) \\
+        GF\_SIZE       & \texttt{256}     & Tổng số phần tử của trường $\text{GF}(2^8)$ \\
+        GF\_ORDER      & \texttt{255}     & Số phần tử khác $0$, cũng là độ dài từ mã cha \\
+        GF\_PRIM\_POLY & \texttt{9'h11D}  & Đa thức bất khả quy $p(u) = u^8 + u^4 + u^3 + u^2 + 1$ \\
+        GF\_ALPHA      & \texttt{8'h02}   & Phần tử nguyên thủy $\alpha = u$ \\
+        RS\_N          & \texttt{15}      & Số symbol của một từ mã truyền ($120\text{ bit}$) \\
+        RS\_K          & \texttt{11}      & Số symbol dữ liệu gốc đầu vào ($88\text{ bit}$) \\
+        RS\_R          & \texttt{4}       & Số symbol parity ($32\text{ bit}$) \\
+        RS\_T          & \texttt{2}       & Số lỗi symbol không biết vị trí bảo đảm sửa được \\
+        RS\_FIRST\_ROOT & \texttt{0}      & Số mũ $F$ của nghiệm đầu trong đa thức sinh $g(x)$ \\
+        RS\_ROOT\_STEP & \texttt{1}       & Bước tăng số mũ giữa các nghiệm liên tiếp của $g(x)$ \\
+        RS\_PARENT\_N  & \texttt{255}     & Độ dài từ mã cha nguyên thủy chưa rút ngắn \\
+        RS\_PARENT\_K  & \texttt{251}     & Số symbol dữ liệu của từ mã cha \\
+        RS\_SHORTEN    & \texttt{240}     & Số symbol $0$ cố định bị lược bỏ ở đầu từ mã cha \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Các tham số trên ràng buộc lẫn nhau qua hệ phương trình đặc trưng:
+\begin{align}
+    \text{GF\_SIZE}     &= 2^{\text{RS\_M}} = 256, &
+    \text{GF\_ORDER}    &= \text{GF\_SIZE} - 1 = 255, \label{eq:rel-gf} \\
+    \text{RS\_R}        &= \text{RS\_N} - \text{RS\_K} = 4, &
+    \text{RS\_T}        &= \left\lfloor \frac{\text{RS\_R}}{2} \right\rfloor = 2, \label{eq:rel-rt} \\
+    \text{RS\_PARENT\_N} &= \text{GF\_ORDER} = 255, &
+    \text{RS\_PARENT\_K} &= \text{RS\_PARENT\_N} - \text{RS\_R} = 251, \label{eq:rel-parent} \\
+    \text{RS\_SHORTEN}  &= \text{RS\_PARENT\_N} - \text{RS\_N} = \text{RS\_PARENT\_K} - \text{RS\_K} = 240. \label{eq:rel-shorten}
+\end{align}
+
+\subsection{Cơ sở toán học của phép rút ngắn mã (\texorpdfstring{$\text{RS}(255,251) \to \text{RS}(15,11)$}{RS(255,251) -> RS(15,11)})}
+\label{sec:shorten}
+
+Một bộ mã Reed-Solomon nguyên thủy trên $\text{GF}(256)$ có độ dài khối cố định $N_{\text{parent}} = 2^8 - 1 = 255$ symbol. Để triển khai khối kích thước gọn $N = 15$ phù hợp cho truyền thông khung nhỏ và tương tác trực tiếp trên DE10-Lite mà vẫn giữ nguyên cấu trúc số học $\text{GF}(256)$ và năng lực sửa $T = 2$ lỗi, hệ thống sử dụng kỹ thuật \textbf{rút ngắn mã} (\textit{shortened code}).
+
+Về mặt toán học, xuất phát từ mã cha $\text{RS}(255, 251)$ cùng đa thức sinh $g(x)$ bậc $R = 4$, ta cố định trước $\text{RS\_SHORTEN} = 240$ symbol dữ liệu đầu tiên bằng $0$ (\texttt{0x00}) và ghép $K = 11$ symbol dữ liệu thực tế vào $11$ vị trí cuối của khối thông tin:
+\begin{equation}
+    \tilde{m} = [\underbrace{\texttt{0x00}, \dots, \texttt{0x00}}_{240\text{ byte}}, \; m_0, m_1, \dots, m_{10}] \;\Longrightarrow\; \tilde{m}(x) = \sum_{s=0}^{10} m_s x^{10-s} = m(x).
+    \label{eq:shorten-poly}
+\end{equation}
+Vì $240$ hệ số bậc cao từ $x^{250}$ đến $x^{11}$ đều bằng $0$, đa thức thông tin $251$ symbol $\tilde{m}(x)$ đồng nhất tuyệt đối với đa thức $m(x)$ bậc $\le 10$. Khi nhân với $x^R = x^4$ và chia cho $g(x)$, phần dư parity $p(x) = [x^4 \tilde{m}(x)] \bmod g(x) = [x^4 m(x)] \bmod g(x)$ không hề thay đổi. Trên mạch phần cứng LFSR khởi tạo thanh ghi parity bằng $0$, $240$ chu kỳ nạp byte \texttt{0x00} đầu tiên giữ nguyên toàn bộ thanh ghi ở $0$; do đó bộ mã hóa có thể tính parity trực tiếp trên đúng $11$ byte $m[0..10]$ rồi xuất từ mã $15$ byte (lược bỏ $240$ byte $0$ dư thừa trên đường truyền).
+
+Do bộ mã rút ngắn là một không gian con của $\text{RS}(255,251)$ với các ký tự bị bỏ bằng $0$ đã biết trước ở cả phía phát và phía thu, khoảng cách tối thiểu $d_{\min} \ge 5$ và khả năng sửa $T = 2$ lỗi được bảo toàn hoàn toàn. Để giữ nguyên công thức định vị lỗi sau khi rút ngắn, cần ánh xạ chính xác giữa chỉ số truyền $i \in [0, 14]$ và chỉ số mã cha $j \in [240, 254]$:
+\begin{align}
+    j &= \text{RS\_SHORTEN} + i = 240 + i, \label{eq:map-j} \\
+    254 - j &= (\text{RS\_PARENT\_N} - 1) - (240 + i) = 14 - i = \text{RS\_N} - 1 - i. \label{eq:map-exp}
+\end{align}
+Đẳng thức \eqref{eq:map-exp} chứng minh rằng số mũ vị trí lỗi $X_i = \alpha^{N-1-i} = \alpha^{14-i}$ trùng khớp hoàn toàn với số mũ $\alpha^{254-j}$ của mã cha. Các mốc kiểm tra biên (theo \texttt{docs/rs\_parameters.md}):
+\begin{itemize}
+    \item Đầu khối ($i = 0 \leftrightarrow j = 240$): số mũ $14$, $X_0 = \alpha^{14} = \texttt{0x13}$, nghịch đảo $z_0 = X_0^{-1} = \alpha^{241} = \texttt{0x58}$.
+    \item Cuối khối ($i = 14 \leftrightarrow j = 254$): số mũ $0$, $X_{14} = \alpha^{0} = \texttt{0x01}$, nghịch đảo $z_{14} = X_{14}^{-1} = \texttt{0x01}$.
+\end{itemize}
+Các vị trí thuộc vùng lược bỏ $j \in [0, 239]$ không tồn tại trong khối nhận nên phải bị bộ giải mã từ chối nếu xuất hiện nghiệm Chien nằm ngoài $0 \dots 14$.
+
+\subsection{Xây dựng chi tiết đa thức sinh \texorpdfstring{$g(x)$}{g(x)}}
+
+Với nghiệm đầu $F = \text{RS\_FIRST\_ROOT} = 0$, bước số mũ $\text{RS\_ROOT\_STEP} = 1$ và số symbol kiểm tra $R = 4$, đa thức sinh $g(x)$ có $4$ nghiệm liên tiếp $\alpha^0 = \texttt{0x01}$, $\alpha^1 = \texttt{0x02}$, $\alpha^2 = \texttt{0x04}$ và $\alpha^3 = \texttt{0x08}$:
+\begin{equation}
+    g(x) = \prod_{j=0}^{3} \bigl(x + \alpha^{F+j}\bigr) = (x + \texttt{0x01})(x + \texttt{0x02})(x + \texttt{0x04})(x + \texttt{0x08}).
+    \label{eq:gen-poly-prod}
+\end{equation}
+Thực hiện nhân khai triển từng bước trên $\text{GF}(256)$ (toàn bộ hệ số viết dạng hexadecimal, cộng bằng XOR và nhân theo $p(u) = \texttt{0x11D}$):
+\begin{enumerate}
+    \item \textbf{Bước 1 -- Nhân $(x + \texttt{0x01})(x + \texttt{0x02})$:}
+    \begin{align*}
+        g_1(x) &= x^2 + (\texttt{0x01} \oplus \texttt{0x02})x + (\texttt{0x01} \cdot \texttt{0x02}) \\
+               &= x^2 + \texttt{0x03}x + \texttt{0x02}.
+    \end{align*}
+    \item \textbf{Bước 2 -- Nhân tiếp với $(x + \texttt{0x04})$:}
+    \begin{align*}
+        g_2(x) &= (x^2 + \texttt{0x03}x + \texttt{0x02})(x + \texttt{0x04}) \\
+               &= x^3 + (\texttt{0x04} \oplus \texttt{0x03})x^2 + \bigl((\texttt{0x03} \cdot \texttt{0x04}) \oplus \texttt{0x02}\bigr)x + (\texttt{0x02} \cdot \texttt{0x04}).
+    \end{align*}
+    Tính các tích thành phần: $\texttt{0x03} \cdot \texttt{0x04} = \texttt{0x0C}$, suy ra $\texttt{0x0C} \oplus \texttt{0x02} = \texttt{0x0E}$; $\texttt{0x02} \cdot \texttt{0x04} = \texttt{0x08}$. Vậy:
+    \[
+        g_2(x) = x^3 + \texttt{0x07}x^2 + \texttt{0x0E}x + \texttt{0x08}.
+    \]
+    \item \textbf{Bước 3 -- Nhân tiếp với $(x + \texttt{0x08})$:}
+    \begin{align*}
+        g(x) &= (x^3 + \texttt{0x07}x^2 + \texttt{0x0E}x + \texttt{0x08})(x + \texttt{0x08}) \\
+             &= x^4 + (\texttt{0x08} \oplus \texttt{0x07})x^3 + \bigl((\texttt{0x07} \cdot \texttt{0x08}) \oplus \texttt{0x0E}\bigr)x^2 \\
+             &\quad + \bigl((\texttt{0x0E} \cdot \texttt{0x08}) \oplus \texttt{0x08}\bigr)x + (\texttt{0x08} \cdot \texttt{0x08}).
+    \end{align*}
+    Tính chi tiết từng hệ số trong $\text{GF}(256)$:
+    \begin{itemize}
+        \item Hệ số $x^3$: $\texttt{0x08} \oplus \texttt{0x07} = \texttt{0x0F}$.
+        \item Hệ số $x^2$: $\texttt{0x07} \cdot \texttt{0x08} = \texttt{0x38}$, sau đó $\texttt{0x38} \oplus \texttt{0x0E} = \texttt{0x36}$.
+        \item Hệ số $x^1$: $\texttt{0x0E} \cdot \texttt{0x08} = \texttt{0x70}$, sau đó $\texttt{0x70} \oplus \texttt{0x08} = \texttt{0x78}$.
+        \item Hệ số $x^0$: $\texttt{0x08} \cdot \texttt{0x08} = \texttt{0x40}$ (tương ứng $\alpha^3 \cdot \alpha^3 = \alpha^6 = \texttt{0x40}$).
+    \end{itemize}
+\end{enumerate}
+Kết quả thu được đa thức sinh chuẩn của hệ thống:
+\begin{equation}
+    g(x) = x^4 + \texttt{0x0F}x^3 + \texttt{0x36}x^2 + \texttt{0x78}x + \texttt{0x40}, \qquad \mathbf{g} = [\texttt{0x01},\; \texttt{0x0F},\; \texttt{0x36},\; \texttt{0x78},\; \texttt{0x40}].
+    \label{eq:gen-poly-final}
+\end{equation}
+Kiểm tra nhanh tại nghiệm $x = \alpha^0 = \texttt{0x01}$: $g(\texttt{0x01}) = \texttt{0x01} \oplus \texttt{0x0F} \oplus \texttt{0x36} \oplus \texttt{0x78} \oplus \texttt{0x40} = \texttt{0x00}$, xác nhận tính chính xác của bộ hệ số.
+
+\subsection{Quy ước thứ tự hệ số đa thức và Mã hóa Systematic}
+
+Để tránh sai lệch giữa mô hình Python, testbench và các khối RTL (nhất là khi dùng chung bộ đánh giá đa thức Horner), toàn dự án áp dụng thống nhất quy ước lưu trữ mảng hệ số tổng hợp trong Bảng~\ref{tab:poly-order}. Cần lưu ý rằng thứ tự symbol trên kênh truyền đi từ hệ số bậc cao đến bậc thấp (\texttt{c[0]} truyền trước ứng với $x^{14}$, \texttt{c[14]} truyền cuối ứng với $x^0$), nhưng thứ tự bit bên trong mỗi byte \textbf{không} bị đảo ngược.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Quy ước đa thức và thứ tự lưu mảng hệ số giữa Encoder, Decoder và Model}
+    \label{tab:poly-order}
+    \small
+    \begin{tabularx}{\textwidth}{@{}>{\ttfamily}l l c X@{}}
+        \toprule
+        \multicolumn{1}{@{}l}{\textbf{Mảng / Đa thức}} & \textbf{Biểu thức toán học} & \textbf{Thứ tự lưu} & \textbf{Ánh xạ phần tử tại chỉ số $j$} \\
+        \midrule
+        m[0..10] & $m(x) = \sum_{j=0}^{K-1} m[j] x^{K-1-j}$ & Bậc cao trước & Hệ số của $x^{10-j}$ ($m[0]$ truyền đầu) \\
+        c[0..14], y[0..14] & $c(x) = \sum_{j=0}^{N-1} c[j] x^{N-1-j}$ & Bậc cao trước & Hệ số của $x^{14-j}$, với $y(x) = c(x) + e(x)$ \\
+        g[0..4] & $g(x) = \sum_{j=0}^{R} g[j] x^{R-j}$ & Bậc cao trước & Hệ số của $x^{4-j}$, $g[0] = \texttt{0x01}$ \\
+        parity[0..3] & $p(x) = \sum_{j=0}^{R-1} p[j] x^{R-1-j}$ & Bậc cao trước & Hệ số của $x^{3-j}$ ($p[0]$ xuất đầu) \\
+        S[0..3] & $S(z) = \sum_{j=0}^{R-1} S[j] z^j$ & Bậc thấp trước & $S[j] = y(\alpha^{F+j})$, hệ số của $z^j$ \\
+        lambda[0..L] & $\Lambda(z) = 1 + \sum_{j=1}^{L} \lambda_j z^j$ & Bậc thấp trước & Hệ số của $z^j$ ($\Lambda(0) = \texttt{0x01}$) \\
+        omega[0..3] & $\Omega(z) = \sum_{j=0}^{R-1} \omega_j z^j$ & Bậc thấp trước & Hệ số của $z^j$ trong $[S(z)\Lambda(z)] \bmod z^R$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Trong \textbf{mã hóa systematic}, $K = 11$ symbol dữ liệu gốc giữ nguyên vị trí ở phần đầu từ mã, theo sau bởi $R = 4$ symbol phần dư parity. Ta nhân $m(x)$ với $x^R$ để dịch sang trái $R$ bậc rồi lấy phần dư khi chia cho đa thức sinh $g(x)$:
+\begin{equation}
+    p(x) = \bigl[x^R \cdot m(x)\bigr] \bmod g(x), \quad \deg\bigl(p(x)\bigr) < R,
+    \label{eq:parity-rem}
+\end{equation}
+\begin{equation}
+    c(x) = x^R \cdot m(x) + p(x) \;\Longrightarrow\; \mathbf{c} = \bigl[m[0], \dots, m[10],\; p[0], p[1], p[2], p[3]\bigr].
+    \label{eq:sys-codeword}
+\end{equation}
+Vì phép trừ trùng phép cộng trong đặc số $2$, $c(x) = x^R m(x) - p(x)$ chia hết hoàn toàn cho $g(x)$. Hệ quả tất yếu là mọi từ mã hợp lệ $\mathbf{c}$ đều triệt tiêu tại tất cả $4$ nghiệm của $g(x)$: $c(\alpha^j) = 0$ với $j \in \{0, 1, 2, 3\}$. Thuật toán tham chiếu \texttt{rs\_encode} trong \texttt{model/rs\_reference.py} thực hiện phép chia đa thức này trực tiếp như trong Listing~\ref{lst:rs-encode}.
+
+\begin{lstlisting}[style=pythonstyle, caption={Hàm mã hóa systematic \texttt{rs\_encode} trong \texttt{model/rs\_reference.py}}, label={lst:rs-encode}]
+GEN_POLY = [0x01, 0x0F, 0x36, 0x78, 0x40]
+
+def rs_encode(data):
+    work = list(data) + [0] * RS_R
+    for i in range(RS_K):
+        feedback = work[i]
+        if feedback != 0:
+            for j in range(RS_R + 1):
+                work[i + j] ^= gf_mul(feedback, GEN_POLY[j])
+    parity = work[-RS_R:]
+    return list(data) + parity
+\end{lstlisting}
+
+\subsection{Kiến trúc bộ mã hóa LFSR 4 tầng và Ví dụ tính toán trên vector \texttt{vectors/no\_error/}}
+
+Trong phần cứng (\texttt{rtl/rs\_encoder/rs\_encoder.v}), phép chia đa thức \eqref{eq:parity-rem} được thực thi bằng \textbf{thanh ghi dịch phản hồi tuyến tính} (\textit{Linear Feedback Shift Register -- LFSR}) $R = 4$ tầng (Hình~\ref{fig:lfsr-encoder}). Tương ứng từ trái sang phải với các hệ số bậc thấp đến bậc cao của $g(x) - x^4$ là $[\texttt{0x40}, \texttt{0x78}, \texttt{0x36}, \texttt{0x0F}]$ và bốn thanh ghi $8$-bit $[\texttt{parity[3]}, \texttt{parity[2]}, \texttt{parity[1]}, \texttt{parity[0]}]$, trong đó \texttt{parity[0]} lưu hệ số bậc cao nhất ($x^3$) của phần dư hiện tại.
+
+\begin{figure}[!htb]
+    \centering
+    \begin{tikzpicture}[
+        >=Stealth,
+        reg/.style={draw=primaryblue, fill=boxbg, thick, minimum width=1.22cm, minimum height=0.82cm, align=center, font=\footnotesize\bfseries},
+        add/.style={draw=primaryblue, fill=white, thick, circle, inner sep=1.4pt, font=\small\bfseries},
+        mul/.style={draw=secondaryblue, fill=codebg, thick, minimum width=0.95cm, minimum height=0.60cm, font=\ttfamily\footnotesize},
+        mux/.style={draw=primaryblue, fill=boxbg, thick, minimum width=0.90cm, minimum height=1.15cm, align=center, font=\footnotesize\bfseries},
+        junc/.style={fill=primaryblue, circle, inner sep=1.4pt}
+    ]
+        % Hang thanh ghi chinh tai y = 0 (tu trai sang phai: p[3] -> p[2] -> p[1] -> p[0])
+        \node[mul] (m3) at (0.0, 0.0) {$\times$0x40};
+        \node[reg] (p3) at (1.50, 0.0) {\texttt{parity[3]}\\{\tiny ($x^0$)}};
+        \node[add] (a2) at (2.68, 0.0) {$\oplus$};
+        \node[reg] (p2) at (3.86, 0.0) {\texttt{parity[2]}\\{\tiny ($x^1$)}};
+        \node[add] (a1) at (5.04, 0.0) {$\oplus$};
+        \node[reg] (p1) at (6.22, 0.0) {\texttt{parity[1]}\\{\tiny ($x^2$)}};
+        \node[add] (a0) at (7.40, 0.0) {$\oplus$};
+        \node[reg] (p0) at (8.58, 0.0) {\texttt{parity[0]}\\{\tiny ($x^3$)}};
+
+        % Cac bo nhan he so duoi cac bo cong
+        \node[mul] (m2) at (2.68, -1.15) {$\times$0x78};
+        \node[mul] (m1) at (5.04, -1.15) {$\times$0x36};
+        \node[mul] (m0) at (7.40, -1.15) {$\times$0x0F};
+
+        % Bo cong feedback, ngo vao data_in va MUX dau ra
+        \node[add] (afb) at (10.55, 0.0) {$\oplus$};
+        \node[font=\footnotesize\bfseries] (din) at (10.55, 1.90) {\texttt{data\_in} ($m[i]$)};
+        \node[mux] (muxout) at (12.45, 1.10) {MUX};
+        \node[font=\footnotesize\bfseries] (dout) at (14.10, 1.10) {\texttt{data\_out}};
+
+        % Duong truyen thanh ghi chinh
+        \draw[->, thick] (m3) -- (p3);
+        \draw[->, thick] (p3) -- (a2);
+        \draw[->, thick] (a2) -- (p2);
+        \draw[->, thick] (p2) -- (a1);
+        \draw[->, thick] (a1) -- (p1);
+        \draw[->, thick] (p1) -- (a0);
+        \draw[->, thick] (a0) -- (p0);
+        \draw[->, thick] (p0) -- (afb);
+
+        % Duong tu bo nhan len bo cong
+        \draw[->, thick] (m2) -- (a2);
+        \draw[->, thick] (m1) -- (a1);
+        \draw[->, thick] (m0) -- (a0);
+
+        % Noi dau vao va dau ra systematic (co cham noi tai re nhanh)
+        \draw[->, thick] (din) -- (afb);
+        \node[junc] at (10.55, 1.38) {};
+        \draw[->, thick] (10.55, 1.38) -- ($(muxout.west)+(0,0.28)$);
+        \node[junc] at (9.65, 0.0) {};
+        \draw[->, thick] (9.65, 0.0) |- ($(muxout.west)+(0,-0.28)$);
+        \draw[->, thick] (muxout) -- (dout);
+        \node[above=0.10cm of muxout, font=\tiny, color=mutedgray, align=center] {0: Data\\1: Parity};
+
+        % Bus feedback phia duoi (ngat ve 0 trong pha S_PARITY)
+        \draw[thick] (afb.south) -- node[right, font=\tiny, color=secondaryblue] {\texttt{fb} (\texttt{0} khi \texttt{S\_PARITY})} (10.55, -2.05);
+        \draw[->, thick] (10.55, -2.05) -| (m3.south);
+        \node[junc] at (2.68, -2.05) {};
+        \node[junc] at (5.04, -2.05) {};
+        \node[junc] at (7.40, -2.05) {};
+        \draw[->, thick] (2.68, -2.05) -- (m2.south);
+        \draw[->, thick] (5.04, -2.05) -- (m1.south);
+        \draw[->, thick] (7.40, -2.05) -- (m0.south);
+        \node[below=0.06cm] at (5.04, -2.05) {\footnotesize\color{primaryblue} \texttt{feedback} $= \texttt{data\_in} \oplus \texttt{parity[0]}$};
+    \end{tikzpicture}
+    \caption{Sơ đồ khối bộ mã hóa systematic LFSR 4 tầng với hệ số $[\texttt{0x40}, \texttt{0x78}, \texttt{0x36}, \texttt{0x0F}]$}
+    \label{fig:lfsr-encoder}
+\end{figure}
+
+Nguyên lý vận hành gồm hai pha tương ứng với hai trạng thái \texttt{S\_DATA} và \texttt{S\_PARITY} trong \texttt{rs\_encoder.v}:
+\begin{enumerate}
+    \item \textbf{Pha nạp dữ liệu ($K = 11$ chu kỳ):} Thanh ghi khởi tạo bằng $0$. Tại mỗi chu kỳ $i = 0 \dots 10$, symbol $m[i]$ đi thẳng ra \texttt{data\_out}, đồng thời tính $\text{fb} = m[i] \oplus \texttt{parity[0]}$ và cập nhật song song:
+    \begin{align*}
+        \texttt{parity[0]} &\leftarrow \texttt{parity[1]} \oplus (\text{fb} \cdot \texttt{0x0F}), &
+        \texttt{parity[1]} &\leftarrow \texttt{parity[2]} \oplus (\text{fb} \cdot \texttt{0x36}), \\
+        \texttt{parity[2]} &\leftarrow \texttt{parity[3]} \oplus (\text{fb} \cdot \texttt{0x78}), &
+        \texttt{parity[3]} &\leftarrow \text{fb} \cdot \texttt{0x40}.
+    \end{align*}
+    \item \textbf{Pha xuất parity ($R = 4$ chu kỳ):} Phản hồi ngắt ($\text{fb} = \texttt{0x00}$), bộ chọn \texttt{MUX} chuyển sang ngõ dưới và dịch lần lượt $4$ thanh ghi $[\texttt{parity[0]}, \texttt{parity[1]}, \texttt{parity[2]}, \texttt{parity[3]}]$ ra \texttt{data\_out}, đẩy \texttt{0x00} từ phía trái vào.
+\end{enumerate}
+
+\textbf{Ví dụ tính toán minh họa cho vector \texttt{vectors/no\_error/}:} Tập tin \texttt{vectors/no\_error/input\_data.hex} chứa $K = 11$ byte tăng dần:
+\[
+    \mathbf{m} = [\texttt{00},\; \texttt{01},\; \texttt{02},\; \texttt{03},\; \texttt{04},\; \texttt{05},\; \texttt{06},\; \texttt{07},\; \texttt{08},\; \texttt{09},\; \texttt{0A}].
+\]
+Bảng~\ref{tab:lfsr-trace} ghi lại toàn bộ diễn biến thanh ghi \texttt{parity[0..3]}, giá trị phản hồi \texttt{fb} và bốn tích nhân hằng hệ số qua 11 bước mã hóa.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Diễn biến từng chu kỳ của bộ mã hóa LFSR 4 tầng cho vector \texttt{vectors/no\_error/}}
+    \label{tab:lfsr-trace}
+    \small
+    \setlength{\tabcolsep}{4.5pt}
+    \begin{tabular}{@{}cccccc@{}}
+        \toprule
+        \textbf{Chu kỳ $i$} & \textbf{\texttt{data\_in}} & \textbf{\texttt{parity[0..3]} trước} & \textbf{\texttt{fb}} & \textbf{Tích $[\texttt{0F},\texttt{36},\texttt{78},\texttt{40}]\cdot\texttt{fb}$} & \textbf{\texttt{parity[0..3]} sau} \\
+        \midrule
+        $0$  & \texttt{00} & \texttt{00 00 00 00} & \texttt{00} & \texttt{00 00 00 00} & \texttt{00 00 00 00} \\
+        $1$  & \texttt{01} & \texttt{00 00 00 00} & \texttt{01} & \texttt{0F 36 78 40} & \texttt{0F 36 78 40} \\
+        $2$  & \texttt{02} & \texttt{0F 36 78 40} & \texttt{0D} & \texttt{4B 43 62 67} & \texttt{7D 3B 22 67} \\
+        $3$  & \texttt{03} & \texttt{7D 3B 22 67} & \texttt{7E} & \texttt{B0 D1 E9 F6} & \texttt{8B F3 8E F6} \\
+        $4$  & \texttt{04} & \texttt{8B F3 8E F6} & \texttt{8F} & \texttt{86 2D 44 60} & \texttt{75 A3 B2 60} \\
+        $5$  & \texttt{05} & \texttt{75 A3 B2 60} & \texttt{70} & \texttt{EA C8 03 51} & \texttt{49 7A 63 51} \\
+        $6$  & \texttt{06} & \texttt{49 7A 63 51} & \texttt{4F} & \texttt{B2 2E F9 2A} & \texttt{C8 4D A8 2A} \\
+        $7$  & \texttt{07} & \texttt{C8 4D A8 2A} & \texttt{CF} & \texttt{61 2C 2F AD} & \texttt{2C 84 05 AD} \\
+        $8$  & \texttt{08} & \texttt{2C 84 05 AD} & \texttt{24} & \texttt{C1 56 46 F5} & \texttt{45 53 EB F5} \\
+        $9$  & \texttt{09} & \texttt{45 53 EB F5} & \texttt{4C} & \texttt{A3 74 71 EA} & \texttt{F0 9F 84 EA} \\
+        $10$ & \texttt{0A} & \texttt{F0 9F 84 EA} & \texttt{FA} & \texttt{5F 0B C2 6C} & \texttt{C0 8F 28 6C} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Sau chu kỳ $10$, bốn byte phần dư giữ trong thanh ghi là $\texttt{C0 8F 28 6C}$, ghép nối vào cuối khối dữ liệu để tạo ra đúng $15$ byte trong \texttt{vectors/no\_error/encoded\_data.hex}:
+\[
+    \mathbf{c} = [\texttt{00},\; \texttt{01},\; \texttt{02},\; \texttt{03},\; \texttt{04},\; \texttt{05},\; \texttt{06},\; \texttt{07},\; \texttt{08},\; \texttt{09},\; \texttt{0A},\; \texttt{C0},\; \texttt{8F},\; \texttt{28},\; \texttt{6C}].
+\]
+Kiểm chứng lại bằng cách đánh giá đa thức từ mã $c(x)$ tại các nghiệm $\alpha^0, \alpha^1, \alpha^2, \alpha^3$ đều thu được hội chứng $\mathbf{S} = [\texttt{00}, \texttt{00}, \texttt{00}, \texttt{00}]$, khẳng định từ mã hợp lệ và sẵn sàng cho chu trình giải mã trình bày ở các mục tiếp theo.
