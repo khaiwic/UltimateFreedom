@@ -32,6 +32,8 @@ module rs_controller (
     // Trang thai & hien thi ra 3 LED 7 doan + 10 LED don
     output reg         busy,
     output reg         fail,
+    output reg         log_start,
+    output wire [14:0] dec_out,
     output reg   [2:0] sym0_disp,
     output reg   [2:0] sym1_disp,
     output reg   [2:0] sym2_disp,
@@ -43,6 +45,8 @@ module rs_controller (
     reg  [1:0] in_cnt, err_cnt;
     reg        info_ready, err_done, sw9_prev;
     reg [14:0] out_buf;
+
+    assign dec_out = out_buf;
 
     // Chon 3 symbol hien thi ra HEX2, HEX1, HEX0
     always @(*) begin
@@ -108,10 +112,12 @@ module rs_controller (
             decoder_start <= 1'b0;
             busy          <= 1'b0;
             fail          <= 1'b0;
+            log_start     <= 1'b0;
         end else begin
             sw9_prev      <= sw_sync[9];
             encoder_start <= 1'b0;
             decoder_start <= 1'b0;
+            log_start     <= 1'b0;
 
             case (state)
                 S_IDLE: begin
@@ -211,8 +217,9 @@ module rs_controller (
                 S_DEC: begin
                     busy <= 1'b1;
                     if (decoder_done) begin
-                        out_buf <= dec_corr_out;
-                        busy    <= 1'b0;
+                        out_buf   <= dec_corr_out;
+                        busy      <= 1'b0;
+                        log_start <= 1'b1;
                         if (!err_enable) begin
                             info_ready <= 1'b1;
                             fail       <= decoder_fail;

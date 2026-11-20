@@ -1,6 +1,6 @@
-# Chay nhanh mot hoac tat ca 10 testbench bang Icarus Verilog + tuy chon mo GTKWave
+# Chay nhanh mot hoac tat ca 11 testbench bang Icarus Verilog + tuy chon mo GTKWave
 # Cach dung:
-#   .\run_iverilog.ps1                 (chay tat ca 10 testbench va sinh 10 file .vcd)
+#   .\run_iverilog.ps1                 (chay tat ca 11 testbench va sinh 11 file .vcd)
 #   .\run_iverilog.ps1 tb_top          (chay tb_top va sinh tb_top.vcd)
 #   .\run_iverilog.ps1 tb_top -Wave    (chay tb_top va mo luon cua so song GTKWave)
 
@@ -24,6 +24,8 @@ $rtl = @(
     "../rtl/rs_decoder/chien_search.v",
     "../rtl/rs_decoder/forney.v",
     "../rtl/rs_decoder/rs_decoder.v",
+    "../rtl/uart/uart_tx.v",
+    "../rtl/uart/uart_logger.v",
     "../rtl/board/hex_decoder.v",
     "../rtl/board/input_control.v",
     "../rtl/controller/rs_controller.v",
@@ -40,6 +42,7 @@ $allTbs = @(
     "tb_chien_search",
     "tb_forney",
     "tb_rs_decoder",
+    "tb_uart_tx",
     "tb_top"
 )
 

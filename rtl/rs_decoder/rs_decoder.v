@@ -11,7 +11,16 @@ module rs_decoder (
     output wire        busy,
     output reg         done,
     output reg         fail,
-    output reg  [14:0] corr_out
+    output reg  [14:0] corr_out,
+
+    // Cac cong quan sat gia tri trung gian (phuc vu xuat log UART)
+    output wire  [5:0] dbg_syn,
+    output reg         dbg_syn_zero,
+    output wire  [8:0] dbg_lambda,
+    output wire  [2:0] dbg_lambda_deg,
+    output wire  [5:0] dbg_omega,
+    output wire  [4:0] dbg_err_mask,
+    output reg  [14:0] dbg_err_val
 );
     localparam [2:0]
         S_IDLE   = 3'd0,
@@ -118,16 +127,24 @@ module rs_decoder (
         .fail     (forney_fail_out)
     );
 
+    assign dbg_syn        = syn_latched;
+    assign dbg_lambda     = lambda_latched;
+    assign dbg_lambda_deg = deg_latched;
+    assign dbg_omega      = omega_latched;
+    assign dbg_err_mask   = mask_latched;
+
     // FSM dieu phoi 5 buoc giai ma
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state          <= S_IDLE;
             rx_buf         <= 15'd0;
             syn_latched    <= 6'd0;
+            dbg_syn_zero   <= 1'b0;
             lambda_latched <= 9'd0;
             deg_latched    <= 3'd0;
             omega_latched  <= 6'd0;
             mask_latched   <= 5'd0;
+            dbg_err_val    <= 15'd0;
             syn_start      <= 1'b0;
             bm_start       <= 1'b0;
             ee_start       <= 1'b0;
@@ -147,39 +164,47 @@ module rs_decoder (
             case (state)
                 S_IDLE: begin
                     if (start) begin
-                        rx_buf    <= rx_in;
-                        syn_start <= 1'b1;
-                        state     <= S_SYN;
+                        rx_buf         <= rx_in;
+                        syn_latched    <= 6'd0;
+                        dbg_syn_zero   <= 1'b0;
+                        lambda_latched <= 9'd0;
+                        deg_latched    <= 3'd0;
+                        omega_latched  <= 6'd0;
+                        mask_latched   <= 5'd0;
+                        dbg_err_val    <= 15'd0;
+                        syn_start      <= 1'b1;
+                        state          <= S_SYN;
                     end
                 end
 
                 S_SYN: begin
                     if (syn_done) begin
+                        syn_latched  <= syn_out;
+                        dbg_syn_zero <= syn_zero_out;
                         if (syn_zero_out) begin
                             corr_out <= rx_buf;
                             fail     <= 1'b0;
                             done     <= 1'b1;
                             state    <= S_IDLE;
                         end else begin
-                            syn_latched <= syn_out;
-                            bm_start    <= 1'b1;
-                            state       <= S_BM;
+                            bm_start <= 1'b1;
+                            state    <= S_BM;
                         end
                     end
                 end
 
                 S_BM: begin
                     if (bm_done) begin
+                        lambda_latched <= bm_lambda_out;
+                        deg_latched    <= bm_deg_out;
                         if (bm_fail_out) begin
                             corr_out <= rx_buf;
                             fail     <= 1'b1;
                             done     <= 1'b1;
                             state    <= S_IDLE;
                         end else begin
-                            lambda_latched <= bm_lambda_out;
-                            deg_latched    <= bm_deg_out;
-                            ee_start       <= 1'b1;
-                            state          <= S_OMEGA;
+                            ee_start <= 1'b1;
+                            state    <= S_OMEGA;
                         end
                     end
                 end
@@ -194,13 +219,13 @@ module rs_decoder (
 
                 S_CHIEN: begin
                     if (chien_done) begin
+                        mask_latched <= chien_mask_out;
                         if (chien_fail_out) begin
                             corr_out <= rx_buf;
                             fail     <= 1'b1;
                             done     <= 1'b1;
                             state    <= S_IDLE;
                         end else begin
-                            mask_latched <= chien_mask_out;
                             forney_start <= 1'b1;
                             state        <= S_FORNEY;
                         end
@@ -209,6 +234,7 @@ module rs_decoder (
 
                 S_FORNEY: begin
                     if (forney_done) begin
+                        dbg_err_val <= forney_val_out;
                         if (forney_fail_out) begin
                             corr_out <= rx_buf;
                             fail     <= 1'b1;

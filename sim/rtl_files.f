@@ -1,4 +1,4 @@
-# Danh sach file RTL cho RS(5,3) tren GF(8)
+# Danh sach file RTL cho RS(5,3) tren GF(8) + UART Monitor
 +incdir+../rtl/include
 
 # 1. Phep toan GF(8)
@@ -17,7 +17,11 @@
 ../rtl/rs_decoder/forney.v
 ../rtl/rs_decoder/rs_decoder.v
 
-# 4. Ngoai vi va dieu khien DE10-Lite
+# 4. Giao tiep UART 115200 bps
+../rtl/uart/uart_tx.v
+../rtl/uart/uart_logger.v
+
+# 5. Ngoai vi va dieu khien DE10-Lite
 ../rtl/board/hex_decoder.v
 ../rtl/board/input_control.v
 ../rtl/controller/rs_controller.v

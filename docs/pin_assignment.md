@@ -6,8 +6,9 @@ Tài liệu này mô tả giao diện top-level `top_de10_lite` và bảng gán 
 
 ```verilog
 module top_de10_lite #(
-    parameter integer DEBOUNCE_MAX = 499_999,
-    parameter integer BLINK_BIT    = 24
+    parameter integer DEBOUNCE_MAX      = 499_999,
+    parameter integer BLINK_BIT         = 24,
+    parameter integer UART_CLKS_PER_BIT = 434
 ) (
     input  wire       MAX10_CLK1_50,
     input  wire [1:0] KEY,
@@ -15,7 +16,8 @@ module top_de10_lite #(
     output wire [9:0] LEDR,
     output wire [7:0] HEX0,
     output wire [7:0] HEX1,
-    output wire [7:0] HEX2
+    output wire [7:0] HEX2,
+    output wire       UART_TX
 );
 ```
 
@@ -56,3 +58,11 @@ Các đoạn tích cực mức thấp (`0` sáng, `1` tắt); dấu chấm `DP` 
 | `[5]` | f | `PIN_D17` | `PIN_A18` | `PIN_C22` |
 | `[6]` | g | `PIN_C17` | `PIN_B17` | `PIN_B22` |
 | `[7]` | DP | `PIN_D15` | `PIN_A16` | `PIN_A19` |
+
+## 6. Giao tiếp UART Monitor (`JP1`)
+
+| Cổng | Chân FPGA | Chân vật lý `JP1` | Nối với CP2101 | Chuẩn |
+| --- | --- | --- | --- | --- |
+| `UART_TX` | `PIN_W10` | `Pin 2` (`GPIO[1]`) | `RXD` | `3.3-V LVTTL`, `115200 bps`, `8N1` |
+| `GND` | — | `Pin 12` | `GND` | Chung mass *(không cắm dây nguồn 3.3V/5V)* |
+

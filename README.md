@@ -21,8 +21,8 @@ Dự án thiết kế và triển khai hệ thống mã hóa và giải mã sử
 
 ## 2. Cấu trúc thư mục chính
 
-- [`rtl/`](file:///d:/UltimateFreedom/UltimateFreedom/rtl): Mã nguồn Verilog HDL (`rs_params.vh`, `gf8_mul.v`, `gf8_inv.v`, `rs_encoder.v`, `error_injector.v`, `syndrome.v`, `berlekamp_massey.v`, `error_evaluator.v`, `chien_search.v`, `forney.v`, `rs_decoder.v`, `rs_controller.v`, `input_control.v`, `hex_decoder.v`, `top_de10_lite.v`).
-- [`tb/`](file:///d:/UltimateFreedom/UltimateFreedom/tb): 10 testbench độc lập (`tb_gf8_mul.v`, `tb_gf8_inv.v`, `tb_rs_encoder.v`, `tb_syndrome.v`, `tb_berlekamp_massey.v`, `tb_error_evaluator.v`, `tb_chien_search.v`, `tb_forney.v`, `tb_rs_decoder.v`, `tb_top.v`).
+- [`rtl/`](file:///d:/UltimateFreedom/UltimateFreedom/rtl): Mã nguồn Verilog HDL (`rs_params.vh`, `gf8_mul.v`, `gf8_inv.v`, `rs_encoder.v`, `error_injector.v`, `syndrome.v`, `berlekamp_massey.v`, `error_evaluator.v`, `chien_search.v`, `forney.v`, `rs_decoder.v`, `uart_tx.v`, `uart_logger.v`, `rs_controller.v`, `input_control.v`, `hex_decoder.v`, `top_de10_lite.v`).
+- [`tb/`](file:///d:/UltimateFreedom/UltimateFreedom/tb): 11 testbench độc lập (`tb_gf8_mul.v`, `tb_gf8_inv.v`, `tb_rs_encoder.v`, `tb_syndrome.v`, `tb_berlekamp_massey.v`, `tb_error_evaluator.v`, `tb_chien_search.v`, `tb_forney.v`, `tb_rs_decoder.v`, `tb_uart_tx.v`, `tb_top.v`).
 - [`model/`](file:///d:/UltimateFreedom/UltimateFreedom/model): Mô hình tham chiếu Python (`gf8_model.py`, `rs_reference.py`, `generate_vectors.py`).
 - [`vectors/`](file:///d:/UltimateFreedom/UltimateFreedom/vectors): Các bộ vector kiểm thử sinh tự động.
 - [`sim/`](file:///d:/UltimateFreedom/UltimateFreedom/sim): Kịch bản biên dịch và mô phỏng ModelSim / QuestaSim (`rtl_files.f`, `run.do`, `wave.do`).
@@ -41,6 +41,7 @@ Dự án thiết kế và triển khai hệ thống mã hóa và giải mã sử
 | `SW[9]` | `0` = Chế độ nhập 3 symbol thông tin & giải mã đúng; `1` = Chế độ nhập tối đa 3 lỗi vào 3 symbol cuối |
 | `HEX2`, `HEX1`, `HEX0` | Hiển thị đồng thời 3 symbol thông tin (`HEX2`: symbol 0, `HEX1`: symbol 1, `HEX0`: symbol 2) |
 | `LEDR[9:0]` | Khi đang nhập: sáng 1 đèn theo giá trị `SW[2:0]` (`1 << SW[2:0]`). Sau giải mã ở chế độ lỗi: **tắt hết** nếu giải mã đúng; **nhấp nháy cả 10 LED** nếu giải mã sai |
+| `UART_TX` | Chân `PIN_W10` (`JP1 Pin 2` $\rightarrow$ `CP2101 RXD`): tự động gửi log từng bước giải mã (`115200 bps`, `8N1`) lên phần mềm **Hercules** trên PC |
 
 ---
 

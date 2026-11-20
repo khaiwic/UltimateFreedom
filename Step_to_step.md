@@ -42,3 +42,14 @@
 2. Lần lượt nhập các giá trị khác `0` bằng `SW[2:0]` và nhấn `KEY[1]` cho 2 hoặc 3 symbol cuối (ví dụ: `1`, `2`, `3`).
 3. Kết quả: vượt quá khả năng sửa $T = 1$, toàn bộ 10 đèn **`LEDR[9:0]` NHẤP NHÁY** để báo giải mã thất bại.
 4. Nhấn `KEY[0]` bất kỳ lúc nào để Reset toàn bộ hệ thống.
+
+## 5. Xem quá trình giải mã trên PC bằng Hercules (qua CP2101)
+1. Đấu dây giữa CP2101 và đầu cắm `JP1` trên DE10-Lite:
+   - `CP2101 RXD` $\leftarrow$ `JP1 Pin 2` (`GPIO[1]` / `PIN_W10` / `UART_TX`)
+   - `CP2101 GND` $\leftrightarrow$ `JP1 Pin 12` (`GND`)
+   - **Không cắm dây `3.3V` hoặc `5V`**.
+2. Mở phần mềm **Hercules** $\rightarrow$ chọn tab **Serial**:
+   - **Name**: chọn đúng cổng `COMx` của `Silicon Labs CP210x`.
+   - **Baud**: `115200`, **Data size**: `8`, **Parity**: `none`, **Handshake**: `OFF`.
+   - Bấm **Open** để nhận trực tiếp các bước `DATA`, `ENC`, `RX`, `SYN`, `BM`, `OMG`, `MASK`, `ERR`, `DEC` sau mỗi lần giải mã.
+
